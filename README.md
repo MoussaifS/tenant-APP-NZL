@@ -1,36 +1,98 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Guest Portal - Tenant-Facing Mobile App
+
+A mobile-first web application designed for Airbnb Superhosts to provide guests with quick, convenient access to essential information and services.
+
+## Features
+
+### Core Functionality
+- **Check-out Date Display**: Guests can easily view their check-out date
+- **In-house Services**: Explore available amenities like WiFi, Features, and Unit Lock
+- **Partner Services**: Discover external service providers for additional support
+- **Search Functionality**: Find specific services or information quickly
+- **Multi-language Support**: Available in English and Arabic with RTL support
+
+### Mobile-First Design
+- Responsive design optimized for mobile devices
+- Touch-friendly interface with proper tap targets
+- Gold/beige color scheme matching the brand
+- Bottom navigation for easy access to key features
+
+### Guest Experience
+- Personalized welcome with guest name
+- Real-time status bar showing time and connectivity
+- Chat support integration
+- Current reservation details with property location
+- Quick access to amenities and services
+
+## Technology Stack
+
+- **Framework**: Next.js 15 with App Router
+- **Styling**: Tailwind CSS 4
+- **Language**: TypeScript
+- **Internationalization**: Built-in i18n support
+- **Mobile Optimization**: Responsive design with mobile-first approach
 
 ## Getting Started
 
-First, run the development server:
+1. Install dependencies:
+   ```bash
+   npm install
+   ```
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
-```
+2. Run the development server:
+   ```bash
+   npm run dev
+   ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+3. Open [http://localhost:3000](http://localhost:3000) in your mobile browser
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## Usage
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+### For Superhosts
+1. Generate a QR code pointing to your property's guest portal URL
+2. Place the QR code in your property for easy guest access
+3. Customize guest information, check-in/check-out dates, and available services
 
-## Learn More
+### For Guests
+1. Scan the QR code with your mobile device
+2. View your check-out date and reservation details
+3. Explore available amenities and services
+4. Access partner providers for additional support
+5. Use the search function to find specific information
 
-To learn more about Next.js, take a look at the following resources:
+## Customization
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+The app is designed to be easily customizable:
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+- **Guest Information**: Update guest name and profile in the translations
+- **Dates**: Modify check-in/check-out dates in the component
+- **Services**: Add or modify amenities and partner services
+- **Branding**: Update colors and styling in the CSS variables
+- **Languages**: Add new languages by extending the translations object
 
-## Deploy on Vercel
+## Mobile Optimization
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+- Viewport meta tag configured for mobile devices
+- Touch-friendly button sizes (minimum 44px)
+- Optimized images and assets
+- Fast loading with compression enabled
+- RTL support for Arabic language
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+## Browser Support
+
+- iOS Safari 12+
+- Chrome Mobile 80+
+- Firefox Mobile 80+
+- Samsung Internet 12+
+
+## Deployment
+
+The app is ready for deployment on platforms like:
+- Vercel (recommended for Next.js)
+- Netlify
+- AWS Amplify
+- Any static hosting service
+
+## License
+
+This project is designed for Airbnb Superhosts to enhance guest experiences.
