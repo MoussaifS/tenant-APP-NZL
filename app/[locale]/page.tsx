@@ -83,7 +83,7 @@ export default function Home({ params }: { params: Promise<{ locale: string }> }
   }
 
   const t = translations[locale as keyof typeof translations];
-  const isRTL = locale === 'ar';
+  // const isRTL = locale === 'ar';
 
   return (
     <LocaleLayout locale={locale}>

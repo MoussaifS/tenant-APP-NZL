@@ -167,7 +167,7 @@ export default function CleaningServices({ params }: { params: Promise<{ locale:
   }
 
   const t = translations[locale as keyof typeof translations];
-  const isRTL = locale === 'ar';
+  // const isRTL = locale === 'ar';
 
   // Get recommended services based on unit type and stay duration
   const getRecommendedServices = () => {

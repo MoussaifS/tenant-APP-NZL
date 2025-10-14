@@ -5,7 +5,6 @@ import { useEffect, useState } from 'react';
 import LocaleLayout from '../../components/LocaleLayout';
 import BottomNavigation from '../components/BottomNavigation';
 import { Card, CardContent, CardHeader, CardTitle } from '../../../components/ui/card';
-import { Badge } from '../../../components/ui/badge';
 import { Button } from '../../../components/ui/button';
 
 // Property data structure
@@ -230,7 +229,7 @@ export default function UnitInformation({ params }: { params: Promise<{ locale: 
   }
 
   const t = translations[locale as keyof typeof translations];
-  const isRTL = locale === 'ar';
+  // const isRTL = locale === 'ar';
 
   const handleGoogleMapsClick = () => {
     // Open Google Maps with the property location
@@ -398,26 +397,26 @@ export default function UnitInformation({ params }: { params: Promise<{ locale: 
 }
 
 // Icon Components
-function KeyIcon(props: any) {
-  return (
-    <svg
-      {...props}
-      xmlns="http://www.w3.org/2000/svg"
-      width="24"
-      height="24"
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="2"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-    >
-      <circle cx="7.5" cy="15.5" r="5.5" />
-      <path d="m21 2-9.6 9.6" />
-      <path d="m15.5 7.5 3 3L22 7l-3-3" />
-    </svg>
-  );
-}
+// function KeyIcon(props: any) {
+//   return (
+//     <svg
+//       {...props}
+//       xmlns="http://www.w3.org/2000/svg"
+//       width="24"
+//       height="24"
+//       viewBox="0 0 24 24"
+//       fill="none"
+//       stroke="currentColor"
+//       strokeWidth="2"
+//       strokeLinecap="round"
+//       strokeLinejoin="round"
+//     >
+//       <circle cx="7.5" cy="15.5" r="5.5" />
+//       <path d="m21 2-9.6 9.6" />
+//       <path d="m15.5 7.5 3 3L22 7l-3-3" />
+//     </svg>
+//   );
+// }
 
 function MapIcon(props: any) {
   return (

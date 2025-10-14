@@ -9,7 +9,7 @@ interface LocaleLayoutProps {
 }
 
 export default function LocaleLayout({ children, locale }: LocaleLayoutProps) {
-  const router = useRouter();
+  // const router = useRouter();
 
   useEffect(() => {
     // Set the lang attribute on the html element
