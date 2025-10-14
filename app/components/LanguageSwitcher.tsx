@@ -2,6 +2,7 @@
 
 import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
+import { Globe } from 'lucide-react';
 
 export default function LanguageSwitcher() {
   const router = useRouter();
@@ -33,12 +34,30 @@ export default function LanguageSwitcher() {
     switchLocale(newLocale);
   };
 
+  const languages = [
+    { code: 'en', name: 'English', dir: 'ltr' },
+    { code: 'ar', name: 'العربية', dir: 'rtl' }
+  ];
+
+  const currentLanguage = languages.find(lang => lang.code === currentLocale) || languages[0];
+
   return (
-    <button
-      onClick={toggleLanguage}
-      className="px-3 py-1 rounded text-xs font-medium bg-white bg-opacity-20 text-white hover:bg-opacity-30 transition-colors"
-    >
-      EN/AR
-    </button>
+    <div dir={currentLanguage.dir}>
+      <button
+        onClick={toggleLanguage}
+        className={`group flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-medium bg-white/10 backdrop-blur-md border border-white/20 text-white hover:bg-white/20 transition-all duration-300 hover:scale-[1.02] focus:outline-none focus:ring-2 focus:ring-white/30 ${
+          currentLanguage.dir === 'rtl' ? 'flex-row-reverse' : ''
+        }`}
+        aria-label={`Switch to ${currentLocale === 'en' ? 'Arabic' : 'English'}`}
+        title={`Current: ${currentLanguage.name} - Click to switch to ${currentLocale === 'en' ? 'Arabic' : 'English'}`}
+      >
+        <Globe className="w-4 h-4 transition-colors duration-200 group-hover:text-blue-200" />
+        <span className={`text-xs font-semibold tracking-wide ${
+          currentLanguage.dir === 'rtl' ? 'font-arabic' : ''
+        }`}>
+          {currentLanguage.code.toUpperCase()}
+        </span>
+      </button>
+    </div>
   );
 }

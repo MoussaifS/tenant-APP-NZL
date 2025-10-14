@@ -96,3 +96,4 @@ The app is ready for deployment on platforms like:
 ## License
 
 This project is designed for Airbnb Superhosts to enhance guest experiences.
+# tenant-APP-NZL

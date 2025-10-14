@@ -1,8 +1,6 @@
 'use client';
 
-import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardDescription, CardTitle, CardAction  } from '@/components/ui/card';
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { Card, CardContent } from '@/components/ui/card';
 import LanguageSwitcher from '../../components/LanguageSwitcher';
 
 interface WelcomeHeaderProps {
@@ -12,18 +10,17 @@ interface WelcomeHeaderProps {
 
 export default function WelcomeHeader({ welcome, guestName }: WelcomeHeaderProps) {
   return (
-    <Card className="bg-[#CDB990] border-0 rounded-b-[24px]">
-      <CardContent className="px-4 py-6">
+    <Card className="bg-[#CDB990] border-b border-t-0 border-x-0 rounded-b-[24px]">
+      <CardContent className="px-2 py-2">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <Avatar className="w-12 h-12">
-              <AvatarImage src="" alt="Guest" />
-              <AvatarFallback className="bg-white text-gray-600">
-                <div className="w-10 h-10 bg-gray-300 rounded-full"></div>
-              </AvatarFallback>
-            </Avatar>
-            <div>
-              <p className="text-white text-md font-bold">{welcome}, {guestName}</p>
+            <div className="space-y-1">
+              <p className="text-white/90 text-sm font-medium tracking-wide leading-tight">
+                {welcome}
+              </p>
+              <p className="text-white text-xl font-bold tracking-tight leading-tight">
+                {guestName}
+              </p>
             </div>
           </div>
           <div className="flex items-center gap-3">

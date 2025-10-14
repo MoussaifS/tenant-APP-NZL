@@ -30,7 +30,7 @@ const translations = {
     notifications: "Notification",
     support: "Support",
     profile: "Profile",
-    partnerServices: "Partner Services",
+    partnerServices: "Services",
     exploreServices: "Explore our partner providers for additional services and support"
   },
   ar: {
@@ -51,7 +51,7 @@ const translations = {
     notifications: "الإشعارات",
     support: "الدعم",
     profile: "الملف الشخصي",
-    partnerServices: "خدمات الشركاء",
+    partnerServices: "الخدمات",
     exploreServices: "استكشف مقدمي الخدمات الشركاء للحصول على خدمات ودعم إضافي"
   }
 };
@@ -90,7 +90,8 @@ export default function Home({ params }: { params: Promise<{ locale: string }> }
       <div className="min-h-screen bg-gray-50 pb-20">
         <WelcomeHeader 
           welcome={t.welcome} 
-          guestName={t.guestName} 
+          guestName={t.guestName}
+         
         />
         
        
@@ -98,8 +99,8 @@ export default function Home({ params }: { params: Promise<{ locale: string }> }
         <CheckInOutDates 
           checkIn={t.checkIn}
           checkOut={t.checkOut}
-          checkInDate="1-10-2025"
-          checkOutDate="6-11-2025"
+          checkInDate="6-10-2025"
+          checkOutDate="6-11-2026"
         />
 
         <AmenitiesSection 
@@ -111,22 +112,20 @@ export default function Home({ params }: { params: Promise<{ locale: string }> }
           parking={t.parking}
         />
 
-        <CurrentReservation 
-          currentReservation={t.currentReservation}
-          location={t.location}
-        />
+        
 
         <PartnerServices 
           partnerServices={t.partnerServices}
           exploreServices={t.exploreServices}
+          locale={locale}
         />
 
-        <BottomNavigation 
-          home={t.home}
-          notifications={t.notifications}
-          support={t.support}
-          profile={t.profile}
+<CurrentReservation 
+          currentReservation={t.currentReservation}
+          location={t.location}
         />
+
+        <BottomNavigation />
       </div>
     </LocaleLayout>
   );
