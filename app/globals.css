@@ -2,6 +2,23 @@
 
 @custom-variant dark (&:is(.dark *));
 
+/* Font Face Declarations */
+@font-face {
+  font-family: 'Dicat Gothic';
+  src: local('Dicat Gothic'), local('DicatGothic');
+  font-weight: normal;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: '29LT Bukra';
+  src: local('29LT Bukra'), local('29LTBukra'), local('Bukra');
+  font-weight: normal;
+  font-style: normal;
+  font-display: swap;
+}
+
 :root {
   --primary: oklch(0.205 0 0);
   --primary-light: #F4E4BC;
@@ -36,6 +53,14 @@
   --sidebar-accent-foreground: oklch(0.205 0 0);
   --sidebar-border: oklch(0.922 0 0);
   --sidebar-ring: oklch(0.708 0 0);
+  
+  /* Font families - English defaults */
+  --font-body-en: 'Dicat Gothic', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  --font-header-en: 'Dicat Gothic', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  --font-body-ar: 'Calibri', 'Segoe UI', Tahoma, Arial, sans-serif;
+  --font-header-ar: 'Calibri', 'Segoe UI', Tahoma, Arial, sans-serif;
+  --font-welcome-en: var(--font-open-sans), 'Open Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  --font-welcome-ar: '29LT Bukra', 'Calibri', 'Segoe UI', Tahoma, Arial, sans-serif;
 }
 
 @theme inline {
@@ -79,10 +104,41 @@
   --radius-xl: calc(var(--radius) + 4px);
 }
 
+/* Body font based on locale */
 body {
-  font-family: var(--font-geist-sans), Arial, Helvetica, sans-serif;
+  font-family: var(--font-body-en);
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+}
+
+body[lang="ar"],
+body:has([dir="rtl"]) {
+  font-family: var(--font-body-ar);
+}
+
+html[lang="ar"] body,
+html[dir="rtl"] body {
+  font-family: var(--font-body-ar);
+}
+
+/* Headers font based on locale */
+h1, h2, h3, h4, h5, h6 {
+  font-family: var(--font-header-en);
+}
+
+html[lang="ar"] h1,
+html[lang="ar"] h2,
+html[lang="ar"] h3,
+html[lang="ar"] h4,
+html[lang="ar"] h5,
+html[lang="ar"] h6,
+html[dir="rtl"] h1,
+html[dir="rtl"] h2,
+html[dir="rtl"] h3,
+html[dir="rtl"] h4,
+html[dir="rtl"] h5,
+html[dir="rtl"] h6 {
+  font-family: var(--font-header-ar);
 }
 
 /* Mobile-first responsive design */
@@ -123,20 +179,81 @@ button, a {
 }
 
 /* RTL Support */
+[dir="rtl"],
 .rtl {
   direction: rtl;
+  text-align: right;
 }
 
+[dir="ltr"],
+.ltr {
+  direction: ltr;
+  text-align: left;
+}
+
+/* RTL-specific adjustments */
+[dir="rtl"] .flex,
 .rtl .flex {
   flex-direction: row-reverse;
 }
 
+[dir="rtl"] .text-right,
 .rtl .text-right {
   text-align: left;
 }
 
+[dir="rtl"] .text-left,
 .rtl .text-left {
   text-align: right;
+}
+
+[dir="rtl"] .ml-auto,
+.rtl .ml-auto {
+  margin-left: 0;
+  margin-right: auto;
+}
+
+[dir="rtl"] .mr-auto,
+.rtl .mr-auto {
+  margin-right: 0;
+  margin-left: auto;
+}
+
+/* Better RTL support for icons and buttons with spacing */
+[dir="rtl"] svg + span,
+.rtl svg + span {
+  margin-left: 0;
+  margin-right: 0.5rem;
+}
+
+[dir="rtl"] span + svg,
+.rtl span + svg {
+  margin-right: 0;
+  margin-left: 0.5rem;
+}
+
+/* RTL for justify-start/end */
+[dir="rtl"] .justify-start {
+  justify-content: flex-end;
+}
+
+[dir="rtl"] .justify-end {
+  justify-content: flex-start;
+}
+
+/* RTL for items-start/end */
+[dir="rtl"] .items-start {
+  align-items: flex-end;
+}
+
+[dir="rtl"] .items-end {
+  align-items: flex-start;
+}
+
+/* Prevent RTL from reversing flex-col direction in navigation */
+[dir="rtl"] nav [style*="flex-direction: column"],
+[dir="rtl"] nav .flex-col {
+  flex-direction: column !important;
 }
 
 /* Mobile-specific improvements */

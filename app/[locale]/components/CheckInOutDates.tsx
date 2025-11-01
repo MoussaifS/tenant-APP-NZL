@@ -3,134 +3,209 @@
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import ExtensionDaysModal from '@/app/[locale]/components/ExtensionDaysModal';
+import { useAuth } from '@/app/components/AuthProvider';
+import { getBookingDataFromStorage, getFormattedArrivalDate, getFormattedDepartureDate } from '@/lib/bookingUtils';
+import { getMessages } from '@/messages';
+import { useParams } from 'next/navigation';
 
 interface CheckInOutDatesProps {
-  checkIn: string;
-  checkOut: string;
-  checkInDate: string;
-  checkOutDate: string;
+  locale?: string;
 }
 
-export default function CheckInOutDates({ 
-  checkIn, 
-  checkOut, 
-  checkInDate, 
-  checkOutDate 
-}: CheckInOutDatesProps) {
+export default function CheckInOutDates({ locale }: CheckInOutDatesProps = {}) {
+  const params = useParams();
+  const currentLocale = (locale || params?.locale || 'en') as 'en' | 'ar';
+  const isRTL = currentLocale === 'ar';
+  const t = getMessages(currentLocale);
+  const { bookingData } = useAuth();
   const [showCalendarPopup, setShowCalendarPopup] = useState(false);
   const [showRequestAlert, setShowRequestAlert] = useState(false);
   const [showExtensionPopup, setShowExtensionPopup] = useState(false);
   const [selectedDays, setSelectedDays] = useState<number | 'custom'>(1);
   const [customDays, setCustomDays] = useState(1);
+  const [localBookingData, setLocalBookingData] = useState<any>(null);
+
+  // Get booking data from localStorage on component mount
+  useEffect(() => {
+    const storedData = getBookingDataFromStorage();
+    setLocalBookingData(storedData);
+  }, [bookingData]);
+
+  // Get dates from booking data (prefer context, fallback to localStorage)
+  const currentBookingData = bookingData || localBookingData;
+  const checkInDate = currentBookingData?.arrival;
+  const checkOutDate = currentBookingData?.departure;
   
-  // Calculate duration between check-in and check-out
-  const calculateDuration = () => {
-    const checkInDateObj = new Date(checkInDate);
+  // Format dates to short format (e.g., "Nov 15")
+  const formatDate = (dateString: string) => {
+    if (!dateString) return null;
+    const date = new Date(dateString);
+    if (isNaN(date.getTime())) return null;
+    return date.toLocaleDateString('en-US', {
+      month: 'short',
+      day: 'numeric'
+    });
+  };
+  
+  const checkIn = formatDate(checkInDate);
+  const checkOut = formatDate(checkOutDate);
+  
+  // Calculate remaining nights from current day to departure
+  const calculateRemainingNights = () => {
+    if (!checkOutDate) return 0;
+    
+    const currentDate = new Date();
     const checkOutDateObj = new Date(checkOutDate);
-    const timeDiff = checkOutDateObj.getTime() - checkInDateObj.getTime();
+    
+    // Validate dates
+    if (isNaN(checkOutDateObj.getTime())) {
+      return 0;
+    }
+    
+    // Set both dates to start of day for accurate day calculation
+    currentDate.setHours(0, 0, 0, 0);
+    checkOutDateObj.setHours(0, 0, 0, 0);
+    
+    const timeDiff = checkOutDateObj.getTime() - currentDate.getTime();
     const daysDiff = Math.ceil(timeDiff / (1000 * 3600 * 24));
+    
+    // Return daysDiff (can be negative if past checkout)
     return daysDiff;
   };
 
-  const duration = calculateDuration();
+  const remainingNights = calculateRemainingNights();
+  
+  // Check if it's checkout day
+  const isCheckoutDay = remainingNights === 0;
+  
+  // Check if checkout has passed (past checkout date)
+  const isAfterCheckout = remainingNights < 0;
 
-  // Determine background color based on duration
+  // Show loading state if no booking data is available
+  if (!currentBookingData) {
+    return (
+      <div className="px-4 py-4" dir={isRTL ? 'rtl' : 'ltr'}>
+        <h2 className="text-lg font-bold text-gray-800 mb-4">{t.staySummary}</h2>
+        <div className="border border-gray-200 shadow-md bg-white rounded-md overflow-hidden">
+          <div className="p-4 bg-gray-100">
+            <div className="flex items-center justify-center">
+              <div className="text-center">
+                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-600 mx-auto mb-2"></div>
+                <p className="text-sm text-gray-600">{t.loadingBookingInfo}</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // Show error state if dates are invalid
+  if (!checkInDate || !checkOutDate) {
+    return (
+      <div className="px-4 py-4" dir={isRTL ? 'rtl' : 'ltr'}>
+        <h2 className="text-lg font-bold text-gray-800 mb-4">{t.staySummary}</h2>
+        <div className="border border-red-200 shadow-md bg-white rounded-md overflow-hidden">
+          <div className="p-4 bg-red-50">
+            <div className="flex items-center justify-center">
+              <div className="text-center">
+                <svg className="w-8 h-8 text-red-500 mx-auto mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.732 16.5c-.77.833.192 2.5 1.732 2.5z" />
+                </svg>
+                <p className="text-sm text-red-600">{t.unableToLoadDates}</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // Determine background color based on remaining nights
   const getBackgroundColor = () => {
-    if (duration <= 1) return 'bg-red-100';
-    if (duration <= 2) return 'bg-yellow-100';
+    if (isAfterCheckout) return 'bg-gray-100';
+    if (isCheckoutDay) return 'bg-yellow-100';
+    if (remainingNights <= 1) return 'bg-red-100';
+    if (remainingNights <= 2) return 'bg-yellow-100';
     return 'bg-green-100';
   };
 
   const getTextColor = () => {
-    if (duration <= 1) return 'text-red-700';
-    if (duration <= 2) return 'text-yellow-700';
+    if (isAfterCheckout) return 'text-gray-700';
+    if (isCheckoutDay) return 'text-yellow-700';
+    if (remainingNights <= 1) return 'text-red-700';
+    if (remainingNights <= 2) return 'text-yellow-700';
     return 'text-green-700';
   };
 
   const getBorderColor = () => {
-    if (duration <= 1) return 'border-red-200';
-    if (duration <= 2) return 'border-yellow-200';
+    if (isAfterCheckout) return 'border-gray-200';
+    if (isCheckoutDay) return 'border-yellow-200';
+    if (remainingNights <= 1) return 'border-red-200';
+    if (remainingNights <= 2) return 'border-yellow-200';
     return 'border-green-200';
   };
 
-  // Detect mobile platform
-  const isIOS = () => {
-    return /iPad|iPhone|iPod/.test(navigator.userAgent);
+  const getStayMessage = () => {
+    if (isAfterCheckout) {
+      return t.enjoyedStayMessage;
+    }
+    if (isCheckoutDay) {
+      return t.checkoutToday;
+    }
+    if (remainingNights === 1) {
+      return `1 ${t.nightRemaining}`;
+    }
+    return `${remainingNights} ${t.nightsRemaining}`;
   };
 
-  const isAndroid = () => {
-    return /Android/.test(navigator.userAgent);
-  };
-
-  const isMobile = () => {
-    return isIOS() || isAndroid();
-  };
-
-  // Generate calendar links
-  const generateAppleCalendarLink = () => {
+  // Generate calendar file for download
+  const generateICSFile = () => {
+    if (!checkInDate || !checkOutDate) return '';
+    
     const startDate = new Date(checkInDate).toISOString().replace(/[-:]/g, '').split('.')[0] + 'Z';
     const endDate = new Date(checkOutDate).toISOString().replace(/[-:]/g, '').split('.')[0] + 'Z';
     const title = 'Hotel Stay';
-    const details = `Check-in: ${checkInDate}\nCheck-out: ${checkOutDate}`;
+    const details = `Check-in: ${checkIn || 'Invalid Date'}\\nCheck-out: ${checkOut || 'Invalid Date'}`;
     
-    // Use proper iCal format for mobile compatibility
     const icalData = `BEGIN:VCALENDAR
 VERSION:2.0
 PRODID:-//Hotel App//Calendar Event//EN
+CALSCALE:GREGORIAN
+METHOD:PUBLISH
 BEGIN:VEVENT
 UID:${Date.now()}@hotelapp.com
-DTSTAMP:${new Date().toISOString().replace(/[-:]/g, '').split('.')[0] + 'Z'}
+DTSTAMP:${new Date().toISOString().replace(/[-:]/g, '').split('.')[0]}Z
 DTSTART:${startDate}
 DTEND:${endDate}
 SUMMARY:${title}
 DESCRIPTION:${details}
+STATUS:CONFIRMED
+SEQUENCE:0
 END:VEVENT
 END:VCALENDAR`;
     
     return icalData;
   };
 
-  const generateGoogleCalendarLink = () => {
-    const startDate = new Date(checkInDate).toISOString().replace(/[-:]/g, '').split('.')[0] + 'Z';
-    const endDate = new Date(checkOutDate).toISOString().replace(/[-:]/g, '').split('.')[0] + 'Z';
-    const title = encodeURIComponent('Hotel Stay');
-    const details = encodeURIComponent(`Check-in: ${checkInDate}\nCheck-out: ${checkOutDate}`);
+  const handleAddToCalendar = () => {
+    const icsContent = generateICSFile();
+    const blob = new Blob([icsContent], { type: 'text/calendar;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
     
-    return `https://calendar.google.com/calendar/render?action=TEMPLATE&text=${title}&dates=${startDate}/${endDate}&details=${details}`;
-  };
-
-  const handleAppleCalendar = () => {
-    const calendarData = generateAppleCalendarLink();
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = 'hotel-stay.ics';
     
-    if (isIOS()) {
-      // For iOS, use data URL directly
-      const dataUrl = `data:text/calendar;charset=utf-8,${encodeURIComponent(calendarData)}`;
-      window.location.href = dataUrl;
-    } else {
-      // For other platforms, use blob download
-      const blob = new Blob([calendarData], { type: 'text/calendar;charset=utf-8' });
-      const url = URL.createObjectURL(blob);
-      const link = document.createElement('a');
-      link.href = url;
-      link.download = 'hotel-stay.ics';
-      link.style.display = 'none';
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-      URL.revokeObjectURL(url);
-    }
-  };
-
-  const handleGoogleCalendar = () => {
-    const googleUrl = generateGoogleCalendarLink();
+    // Trigger download for all platforms
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
     
-    if (isMobile()) {
-      // For mobile, try to open in app first, fallback to web
-      window.location.href = googleUrl;
-    } else {
-      window.open(googleUrl, '_blank');
-    }
+    URL.revokeObjectURL(url);
+    setShowCalendarPopup(false);
   };
 
   const handleRequestMoreDays = () => {
@@ -139,8 +214,29 @@ END:VCALENDAR`;
 
   const handleConfirmExtension = () => {
     setShowExtensionPopup(false);
+    
+    // Get the number of days for extension
+    const extensionDays = selectedDays === 'custom' ? customDays : selectedDays;
+    
+    // Create WhatsApp message using translations
+    const accommodation = currentBookingData?.accommodation || (isRTL ? 'الإقامة' : 'the accommodation');
+    const dayWord = extensionDays === 1 ? t.day : t.days;
+    
+    // Replace placeholders in the translation template
+    const whatsappMessage = t.extensionWhatsAppMessage
+      .replace('{accommodation}', accommodation)
+      .replace('{days}', String(extensionDays))
+      .replace('{dayWord}', dayWord);
+    
+    // Encode the message for URL
+    const encodedMessage = encodeURIComponent(whatsappMessage);
+    const whatsappUrl = `https://wa.me/966544417180?text=${encodedMessage}`;
+    
+    // Open WhatsApp immediately (must be synchronous with user action to avoid popup blockers)
+    window.open(whatsappUrl, '_blank');
+    
+    // Show and auto-hide alert
     setShowRequestAlert(true);
-    // Auto-hide alert after 5 seconds
     setTimeout(() => {
       setShowRequestAlert(false);
     }, 5000);
@@ -150,25 +246,31 @@ END:VCALENDAR`;
     setSelectedDays(days);
   };
 
+  const extensionDays = selectedDays === 'custom' ? customDays : selectedDays;
+  const dayWord = extensionDays === 1 ? t.day : t.days;
+  const extensionMessage = t.extensionRequestMessage
+    .replace('{days}', String(extensionDays))
+    .replace('{dayWord}', dayWord);
+
   return (
-    <div className="px-4 py-4">
+    <div className="px-4 py-4" dir={isRTL ? 'rtl' : 'ltr'}>
       {/* Request More Days Alert - Fixed at top */}
       {showRequestAlert && (
-        <div className="fixed top-4 left-4 right-4 z-50 animate-in slide-in-from-top-2 duration-300">
+        <div className={`fixed top-4 z-50 animate-in slide-in-from-top-2 duration-300 ${isRTL ? 'right-4 left-4' : 'left-4 right-4'}`}>
           <Alert className="border-blue-200 bg-blue-50 shadow-lg">
             <svg className="h-4 w-4 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
             </svg>
-            <AlertTitle className="text-blue-800">Extension Request Submitted</AlertTitle>
+            <AlertTitle className="text-blue-800">{t.extensionRequestSubmitted}</AlertTitle>
             <AlertDescription className="text-blue-700">
-              Your request for {selectedDays === 'custom' ? customDays : selectedDays} additional {selectedDays === 'custom' ? (customDays === 1 ? 'day' : 'days') : (selectedDays === 1 ? 'day' : 'days')} has been submitted. Our team will review your request and contact you within 1 hours.
+              {extensionMessage}
             </AlertDescription>
           </Alert>
         </div>
       )}
       
-      <h2 className="text-lg font-bold text-gray-800 mb-4">Your Stay Summary</h2>
-      <div className={`border-1 ${getBorderColor()} shadow-md bg-white rounded-md overflow-hidden`}>
+      <h2 className="text-lg font-bold text-gray-800 mb-4">{t.staySummary}</h2>
+      <div className={`border ${getBorderColor()} shadow-md bg-white rounded-md overflow-hidden`}>
         <div className={`p-4 ${getBackgroundColor()}`}>
           {/* Improved Layout with Better Spacing */}
           <div className="flex items-center justify-between gap-4">
@@ -176,168 +278,94 @@ END:VCALENDAR`;
             <div className="flex-1">
               <div className="flex flex-col items-center justify-center mb-2">
                 <div className="flex flex-col items-center gap-1 bg-white/50 px-3 py-1.5 rounded-lg">
-                  <p className="text-sm font-semibold text-gray-800">{checkOutDate}</p>
-                  <p className="text-sm font-semibold text-gray-600">12:00 PM</p>
+                  <p className="text-sm font-semibold text-gray-800">{checkOut || 'Invalid Date'}</p>
+                  <p className="text-sm font-semibold text-gray-600">{t.checkoutTime}</p>
                 </div>
               </div>
             </div>
 
             {/* Center - Duration Badge */}
             <div className="flex-shrink-0">
-              <div className={`px-3 py-2 rounded-lg ${getTextColor()} font-bold text-sm bg-white  `}>
-                {duration} {duration === 1 ? 'Night' : 'Nights'} 
+              <div className={`px-3 py-2 rounded-lg ${getTextColor()} font-bold text-sm bg-white`}>
+                {getStayMessage()}
               </div>
             </div>
             
-            {/* Right Side - Calendar Button */}
-            <div className="flex-shrink-0">
-              <Button 
-                onClick={() => setShowCalendarPopup(true)}
-                variant="outline" 
-                size="sm"
-                className="bg-white border-gray-300 hover:bg-gray-50 active:bg-gray-100 text-gray-700 h-8 px-3 rounded-lg shadow-sm hover:shadow-md transition-all duration-200 flex flex-col items-center touch-manipulation"
-                style={{ 
-                  WebkitTapHighlightColor: 'transparent',
-                  touchAction: 'manipulation'
-                }}
-              >
-                <svg className="w-5 h-5 mb-1" fill="currentColor" viewBox="0 0 20 20">
-                  <path fillRule="evenodd" d="M6 2a1 1 0 00-1 1v1H4a2 2 0 00-2 2v10a2 2 0 002 2h12a2 2 0 002-2V6a2 2 0 00-2-2h-1V3a1 1 0 10-2 0v1H7V3a1 1 0 00-1-1zm0 5a1 1 0 000 2h8a1 1 0 100-2H6z" clipRule="evenodd" />
-                </svg>
-              </Button>
+            {/* Calendar Button */}
+            <div className={`flex-shrink-0 ${isRTL ? 'order-first' : ''}`}>
+              {!isAfterCheckout && (
+                <Button 
+                  onClick={() => setShowCalendarPopup(true)}
+                  variant="outline" 
+                  size="sm"
+                  className="bg-white border-gray-300 hover:bg-gray-50 active:bg-gray-100 text-gray-700 h-8 px-3 rounded-lg shadow-sm hover:shadow-md transition-all duration-200 flex flex-col items-center touch-manipulation"
+                  style={{ 
+                    WebkitTapHighlightColor: 'transparent',
+                    touchAction: 'manipulation'
+                  }}
+                >
+                  <svg className="w-5 h-5 mb-1" fill="currentColor" viewBox="0 0 20 20">
+                    <path fillRule="evenodd" d="M6 2a1 1 0 00-1 1v1H4a2 2 0 00-2 2v10a2 2 0 002 2h12a2 2 0 002-2V6a2 2 0 00-2-2h-1V3a1 1 0 10-2 0v1H7V3a1 1 0 00-1-1zm0 5a1 1 0 000 2h8a1 1 0 100-2H6z" clipRule="evenodd" />
+                  </svg>
+                </Button>
+              )}
             </div>
           </div>
         </div>
       </div>
 
-      {/* Request More Days Button */}
-      <div className="mt-4 flex justify-center">
-        <Button 
-          onClick={handleRequestMoreDays}
-          variant="outline" 
-          className="bg-white border-blue-300 hover:bg-blue-50 active:bg-blue-100 text-blue-700 px-6 py-2 rounded-lg shadow-sm hover:shadow-md transition-all duration-200 touch-manipulation"
-          style={{ 
-            WebkitTapHighlightColor: 'transparent',
-            touchAction: 'manipulation'
-          }}
-        >
-          <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
-          </svg>
-          Request More Days
-        </Button>
-      </div>
-
-      {/* Calendar Popup Modal */}
-      {showCalendarPopup && (
-        <div className="fixed inset-0 flex items-center justify-center z-50 p-4">
-          {/* Blur overlay */}
-          <div className="absolute inset-0 bg-black bg-opacity-20 backdrop-blur-sm"></div>
-          <div className="relative bg-white rounded-lg shadow-xl max-w-sm w-full p-6 animate-in fade-in-0 zoom-in-95 duration-200 border border-gray-200">
-          <div className="flex justify-between items-center mb-4">
-            <h3 className="text-lg font-semibold text-gray-800">Add to Calendar</h3>
-            <button
-              onClick={() => setShowCalendarPopup(false)}
-              className="text-gray-400 hover:text-gray-600 active:text-gray-800 transition-colors p-1 touch-manipulation"
-              style={{ 
-                WebkitTapHighlightColor: 'transparent',
-                touchAction: 'manipulation'
-              }}
-            >
-              <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-              </svg>
-            </button>
-          </div>
-          
-          <p className="text-sm text-gray-600 mb-4">
-            Choose your preferred calendar app:
-          </p>
-          
-          <div className="space-y-3">
-            {/* Show Apple Calendar option for iOS or all platforms */}
-            {(isIOS() || !isMobile()) && (
-              <Button 
-                onClick={() => {
-                  handleAppleCalendar();
-                  setShowCalendarPopup(false);
-                }}
-                variant="outline" 
-                className="w-full bg-white border-gray-300 hover:bg-gray-50 active:bg-gray-100 text-gray-700 justify-start h-12 touch-manipulation"
-                style={{ 
-                  WebkitTapHighlightColor: 'transparent',
-                  touchAction: 'manipulation'
-                }}
-              >
-                <svg className="w-5 h-5 mr-3 text-gray-600" fill="currentColor" viewBox="0 0 20 20">
-                  <path fillRule="evenodd" d="M6 2a1 1 0 00-1 1v1H4a2 2 0 00-2 2v10a2 2 0 002 2h12a2 2 0 002-2V6a2 2 0 00-2-2h-1V3a1 1 0 10-2 0v1H7V3a1 1 0 00-1-1zm0 5a1 1 0 000 2h8a1 1 0 100-2H6z" clipRule="evenodd" />
-                </svg>
-                {isIOS() ? 'Add to Calendar' : 'Apple Calendar'}
-              </Button>
-            )}
-            
-            {/* Show Google Calendar option */}
-            <Button 
-              onClick={() => {
-                handleGoogleCalendar();
-                setShowCalendarPopup(false);
-              }}
-              variant="outline" 
-              className="w-full bg-white border-gray-300 hover:bg-gray-50 active:bg-gray-100 text-gray-700 justify-start h-12 touch-manipulation"
-              style={{ 
-                WebkitTapHighlightColor: 'transparent',
-                touchAction: 'manipulation'
-              }}
-            >
-              <svg className="w-5 h-5 mr-3 text-blue-500" viewBox="0 0 24 24" fill="currentColor">
-                <path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm0 16H5V8h14v11z"/>
-                <path d="M7 10h5v5H7z"/>
-              </svg>
-              Google Calendar
-            </Button>
-
-            {/* Show Outlook option for Android */}
-            {isAndroid() && (
-              <Button 
-                onClick={() => {
-                  const startDate = new Date(checkInDate).toISOString().replace(/[-:]/g, '').split('.')[0] + 'Z';
-                  const endDate = new Date(checkOutDate).toISOString().replace(/[-:]/g, '').split('.')[0] + 'Z';
-                  const title = encodeURIComponent('Hotel Stay');
-                  const details = encodeURIComponent(`Check-in: ${checkInDate}\nCheck-out: ${checkOutDate}`);
-                  const outlookUrl = `https://outlook.live.com/calendar/0/deeplink/compose?subject=${title}&startdt=${startDate}&enddt=${endDate}&body=${details}`;
-                  window.location.href = outlookUrl;
-                  setShowCalendarPopup(false);
-                }}
-                variant="outline" 
-                className="w-full bg-white border-gray-300 hover:bg-gray-50 active:bg-gray-100 text-gray-700 justify-start h-12 touch-manipulation"
-                style={{ 
-                  WebkitTapHighlightColor: 'transparent',
-                  touchAction: 'manipulation'
-                }}
-              >
-                <svg className="w-5 h-5 mr-3 text-blue-600" viewBox="0 0 24 24" fill="currentColor">
-                  <path d="M7.5 21L3 16.5 7.5 12 12 16.5 16.5 12 21 16.5 16.5 21 12 16.5 7.5 21Z"/>
-                  <path d="M12 2L2 7L12 12L22 7L12 2Z"/>
-                </svg>
-                Outlook Calendar
-              </Button>
-            )}
-          </div>
+      {/* Request More Days Button - Only show if not after checkout */}
+      {!isAfterCheckout && (
+        <div className="mt-4 flex justify-center">
+          <Button 
+            onClick={handleRequestMoreDays}
+            variant="outline" 
+            className="bg-white border-[#274754] hover:bg-[#274754]/10 active:bg-[#274754]/20 text-[#274754] px-6 py-2 rounded-lg shadow-sm hover:shadow-md transition-all duration-200 touch-manipulation"
+            style={{ 
+              WebkitTapHighlightColor: 'transparent',
+              touchAction: 'manipulation'
+            }}
+          >
+            <svg className={`w-4 h-4 ${isRTL ? 'ml-2' : 'mr-2'}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+            </svg>
+            {isCheckoutDay ? t.extendYourStay : t.requestMoreDays}
+          </Button>
+        </div>
+      )}
+      
+      {/* Thank you message for past guests */}
+      {isAfterCheckout && (
+        <div className="mt-4 text-center">
+          <div className="bg-gradient-to-r from-blue-50 to-purple-50 rounded-xl p-6 border border-blue-100">
+            <p className="text-2xl mb-3">🙏</p>
+            <h3 className="text-lg font-bold text-gray-800 mb-2">{t.thankYouStay}</h3>
+            <p className="text-sm text-gray-600">
+              {t.thankYouMessage}
+            </p>
           </div>
         </div>
       )}
 
-      {/* Extension Days Selection Popup Modal */}
-      {showExtensionPopup && (
-        <div className="fixed inset-0 flex items-center justify-center z-50 p-4">
-          {/* Blur overlay */}
-          <div className="absolute inset-0 bg-black bg-opacity-20 backdrop-blur-sm"></div>
-          <div className="relative bg-white rounded-lg shadow-xl max-w-sm w-full p-6 animate-in fade-in-0 zoom-in-95 duration-200 border border-gray-200">
-            <div className="flex justify-between items-center mb-4">
-              <h3 className="text-lg font-semibold text-gray-800">Extend Your Stay</h3>
+      {/* Calendar Popup Modal - Centered Popup */}
+      {showCalendarPopup && (
+        <div 
+          className="fixed inset-0 flex items-center justify-center z-50 p-4"
+          onClick={() => setShowCalendarPopup(false)}
+        >
+          {/* Semi-transparent overlay */}
+          <div className="absolute inset-0 bg-black/20"></div>
+          
+          {/* Modal - Centered */}
+          <div 
+            className="relative bg-white rounded-2xl shadow-2xl w-full max-w-sm p-6 animate-in fade-in-0 zoom-in-95 duration-200"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className={`flex justify-between items-center mb-6 ${isRTL ? 'flex-row-reverse' : ''}`}>
+              <h3 className="text-xl font-bold text-gray-800">{t.addToCalendar}</h3>
               <button
-                onClick={() => setShowExtensionPopup(false)}
-                className="text-gray-400 hover:text-gray-600 active:text-gray-800 transition-colors p-1 touch-manipulation"
+                onClick={() => setShowCalendarPopup(false)}
+                className={`text-gray-400 hover:text-gray-600 active:text-gray-800 transition-colors p-2 touch-manipulation rounded-full hover:bg-gray-100 active:bg-gray-200 ${isRTL ? '-ml-2' : '-mr-2'}`}
                 style={{ 
                   WebkitTapHighlightColor: 'transparent',
                   touchAction: 'manipulation'
@@ -349,84 +377,49 @@ END:VCALENDAR`;
               </button>
             </div>
             
-            <p className="text-sm text-gray-600 mb-4">
-              How many additional days would you like to extend your stay?
+            <p className="text-sm text-gray-600 mb-6">
+              {t.calendarInstructions}
             </p>
             
-            {/* Day Selection Buttons */}
-            <div className="grid grid-cols-2 gap-3 mb-6">
-              {[
-                { value: 1, label: '1 Day' },
-                { value: 5, label: '5 Days' },
-                { value: 30, label: '1 Month' },
-                { value: 'custom', label: 'Custom' }
-              ].map((option) => (
-                <button
-                  key={option.value}
-                  onClick={() => handleDaySelection(option.value as number | 'custom')}
-                  className={`p-4 rounded-lg border-2 transition-all duration-200 touch-manipulation ${
-                    selectedDays === option.value
-                      ? 'border-blue-500 bg-blue-50 text-blue-700'
-                      : 'border-gray-200 bg-white text-gray-700 hover:border-gray-300 hover:bg-gray-50'
-                  }`}
-                  style={{ 
-                    WebkitTapHighlightColor: 'transparent',
-                    touchAction: 'manipulation'
-                  }}
-                >
-                  <div className="text-center">
-                    <div className="text-sm font-semibold">{option.label}</div>
-                  </div>
-                </button>
-              ))}
-            </div>
-
-            {/* Custom Days Input - Only show when Custom is selected */}
-            {selectedDays === 'custom' && (
-              <div className="mb-6">
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Enter number of days:
-                </label>
-                <input
-                  type="number"
-                  min="1"
-                  max="365"
-                  value={customDays}
-                  onChange={(e) => setCustomDays(parseInt(e.target.value))}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                  placeholder="Enter days"
-                />
+            <div className="space-y-3">
+              <Button 
+                onClick={handleAddToCalendar}
+                className="w-full bg-[#274754] hover:bg-[#274754]/90 active:bg-[#274754]/80 text-white justify-center h-14 text-base font-medium rounded-xl touch-manipulation shadow-lg"
+                style={{ 
+                  WebkitTapHighlightColor: 'transparent',
+                  touchAction: 'manipulation'
+                }}
+              >
+                <svg className={`w-6 h-6 ${isRTL ? 'ml-3' : 'mr-3'}`} fill="currentColor" viewBox="0 0 20 20">
+                  <path fillRule="evenodd" d="M3 17a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm3.293-7.707a1 1 0 011.414 0L9 10.586V3a1 1 0 112 0v7.586l1.293-1.293a1 1 0 111.414 1.414l-3 3a1 1 0 01-1.414 0l-3-3a1 1 0 010-1.414z" clipRule="evenodd" />
+                </svg>
+                {t.downloadCalendarEvent}
+              </Button>
+              
+              <div className="bg-gray-50 rounded-xl p-4 text-sm text-gray-600">
+                <p className="font-medium text-gray-700 mb-2">{t.calendarInstructionsTitle}</p>
+                <ul className={`space-y-1 text-xs ${isRTL ? 'list-disc list-inside' : ''}`}>
+                  {t.calendarInstructionsList.map((instruction, index) => (
+                    <li key={index}>• {instruction}</li>
+                  ))}
+                </ul>
               </div>
-            )}
-
-            {/* Action Buttons */}
-            <div className="flex gap-3">
-              <Button 
-                onClick={() => setShowExtensionPopup(false)}
-                variant="outline" 
-                className="flex-1 bg-white border-gray-300 hover:bg-gray-50 active:bg-gray-100 text-gray-700 touch-manipulation"
-                style={{ 
-                  WebkitTapHighlightColor: 'transparent',
-                  touchAction: 'manipulation'
-                }}
-              >
-                Cancel
-              </Button>
-              <Button 
-                onClick={handleConfirmExtension}
-                disabled={selectedDays === 'custom' && (customDays < 1 || customDays > 365)}
-                className="flex-1 bg-blue-600 hover:bg-blue-700 active:bg-blue-800 text-white touch-manipulation disabled:bg-gray-300 disabled:cursor-not-allowed"
-                style={{ 
-                  WebkitTapHighlightColor: 'transparent',
-                  touchAction: 'manipulation'
-                }}
-              >
-                Request Extension
-              </Button>
             </div>
           </div>
         </div>
       )}
+
+      {/* Extension Days Selection Popup Modal */}
+      <ExtensionDaysModal
+        locale={currentLocale}
+        open={showExtensionPopup}
+        selectedDays={selectedDays}
+        customDays={customDays}
+        onClose={() => setShowExtensionPopup(false)}
+        onConfirm={handleConfirmExtension}
+        onDaySelect={handleDaySelection}
+        onCustomDaysChange={(days) => setCustomDays(days)}
+      />
     </div>
   );
 }

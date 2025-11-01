@@ -1,6 +1,5 @@
 'use client';
 
-import { useRouter } from 'next/navigation';
 import { useEffect } from 'react';
 
 interface LocaleLayoutProps {
@@ -9,10 +8,8 @@ interface LocaleLayoutProps {
 }
 
 export default function LocaleLayout({ children, locale }: LocaleLayoutProps) {
-  // const router = useRouter();
-
   useEffect(() => {
-    // Set the lang attribute on the html element
+    // Update HTML attributes after hydration to avoid mismatch
     document.documentElement.lang = locale;
     document.documentElement.dir = locale === 'ar' ? 'rtl' : 'ltr';
     

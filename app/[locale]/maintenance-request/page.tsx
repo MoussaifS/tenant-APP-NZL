@@ -42,7 +42,7 @@ export default function MaintenanceRequest({ params }: { params: Promise<{ local
       attachPhoto: "Attach Photo",
       takePhoto: "Take Photo",
       uploadPhoto: "Upload Photo",
-      scheduleMessage: "You can schedule maintenance with our support team",
+      scheduleMessage: "Please upload the picture once you are in WhatsApp with our support team",
       send: "Send",
       required: "This field is required",
       invalidMobile: "Please enter a valid mobile number",
@@ -82,19 +82,21 @@ export default function MaintenanceRequest({ params }: { params: Promise<{ local
       newErrors.topic = t.required;
     }
 
-    if (!formData.mobileNumber.trim()) {
-      newErrors.mobileNumber = t.required;
-    } else if (!/^[\d\s\-\+\(\)]+$/.test(formData.mobileNumber)) {
-      newErrors.mobileNumber = t.invalidMobile;
-    }
+    // Commented out - will be used later
+    // if (!formData.mobileNumber.trim()) {
+    //   newErrors.mobileNumber = t.required;
+    // } else if (!/^[\d\s\-\+\(\)]+$/.test(formData.mobileNumber)) {
+    //   newErrors.mobileNumber = t.invalidMobile;
+    // }
 
     if (!formData.message.trim()) {
       newErrors.message = t.required;
     }
 
-    if (!formData.image) {
-      newErrors.image = t.photoRequired;
-    }
+    // Commented out - will be used later
+    // if (!formData.image) {
+    //   newErrors.image = t.photoRequired;
+    // }
 
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
@@ -161,38 +163,43 @@ export default function MaintenanceRequest({ params }: { params: Promise<{ local
   const isRTL = locale === 'ar';
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-[#FAF6F5]">
       {/* Header */}
-      <div className="bg-white shadow-sm border-b">
+        <div className="bg-white shadow-sm border-b border-[#EDEBED]" dir={isRTL ? 'rtl' : 'ltr'}>
           <div className="px-4 py-4">
-            <div className="flex items-center justify-between">
+            <div className={`flex items-center justify-between ${isRTL ? 'flex-row-reverse' : ''}`}>
               <Button 
                 variant="ghost" 
                 onClick={() => router.back()}
-                className="p-2"
+                className="p-2 text-[#274754] hover:bg-[#EDEBED]"
               >
-                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <svg 
+                  className={`w-5 h-5`} 
+                  fill="none" 
+                  stroke="currentColor" 
+                  viewBox="0 0 24 24"
+                >
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
                 </svg>
               </Button>
-              <h1 className="text-lg font-semibold text-gray-800">{t.title}</h1>
+              <h1 className="text-lg font-bold text-[#274754]">{t.title}</h1>
               <div className="w-9"></div> {/* Spacer for centering */}
             </div>
-            <p className="text-sm text-gray-600 mt-2 text-center">⚡ Your request will be responded to within 1 hour</p>
+            <p className="text-sm text-[#94782C] mt-2 text-center font-medium">⚡ Your request will be responded to within 1 hour</p>
           </div>
         </div>
 
 
       <div className="px-4 py-6">
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-center">{t.title}</CardTitle>
+        <Card className="border border-[#EDEBED] bg-white shadow-sm">
+          <CardHeader className="bg-[#CDB990] bg-opacity-10 border-b border-[#EDEBED]">
+            <CardTitle className="text-center text-[#274754] font-bold">{t.title}</CardTitle>
           </CardHeader>
           <CardContent>
             <form onSubmit={handleSubmit} className="space-y-6">
               {/* Topic Field */}
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
+                <label className="block text-sm font-bold text-[#274754] mb-2">
                   {t.topic} *
                 </label>
                 <Input
@@ -208,9 +215,9 @@ export default function MaintenanceRequest({ params }: { params: Promise<{ local
                 )}
               </div>
 
-              {/* Mobile Number Field */}
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
+              {/* Mobile Number Field - Commented out - will be used later */}
+              {/* <div>
+                <label className="block text-sm font-bold text-[#274754] mb-2">
                   {t.mobileNumber} *
                 </label>
                 <Input
@@ -224,11 +231,11 @@ export default function MaintenanceRequest({ params }: { params: Promise<{ local
                 {errors.mobileNumber && (
                   <p className="text-red-500 text-xs mt-1">{errors.mobileNumber}</p>
                 )}
-              </div>
+              </div> */}
 
               {/* Message Field */}
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
+                <label className="block text-sm font-bold text-[#274754] mb-2">
                   {t.message} *
                 </label>
                 <textarea
@@ -236,8 +243,8 @@ export default function MaintenanceRequest({ params }: { params: Promise<{ local
                   onChange={(e) => handleInputChange('message', e.target.value)}
                   placeholder={t.message}
                   rows={4}
-                  className={`w-full px-3 py-2 border rounded-md resize-none focus:outline-none focus:ring-2 focus:ring-blue-500 ${
-                    errors.message ? 'border-red-500' : 'border-gray-300'
+                  className={`w-full px-3 py-2 border rounded-md resize-none focus:outline-none focus:ring-2 focus:ring-[#274754] ${
+                    errors.message ? 'border-red-500' : 'border-[#EDEBED]'
                   }`}
                   dir={isRTL ? 'rtl' : 'ltr'}
                 />
@@ -246,13 +253,12 @@ export default function MaintenanceRequest({ params }: { params: Promise<{ local
                 )}
               </div>
 
-              {/* Image Upload Section */}
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
+              {/* Image Upload Section - Commented out - will be used later */}
+              {/* <div>
+                <label className="block text-sm font-bold text-[#274754] mb-2">
                   {t.attachPhoto} *
                 </label>
                 <div className="space-y-3">
-                  {/* Take Photo Button */}
                   <Button
                     type="button"
                     variant="outline"
@@ -266,7 +272,6 @@ export default function MaintenanceRequest({ params }: { params: Promise<{ local
                     {t.takePhoto}
                   </Button>
 
-                  {/* Upload Photo Button */}
                   <div className="relative">
                     <input
                       type="file"
@@ -286,7 +291,6 @@ export default function MaintenanceRequest({ params }: { params: Promise<{ local
                     </Button>
                   </div>
 
-                  {/* Selected Image Preview */}
                   {formData.image && (
                     <div className="mt-3">
                       <img
@@ -294,7 +298,7 @@ export default function MaintenanceRequest({ params }: { params: Promise<{ local
                         alt="Selected"
                         className="w-full h-32 object-cover rounded-md border"
                       />
-                      <p className="text-xs text-gray-500 mt-1">
+                      <p className="text-xs text-[#94782C] mt-1">
                         {formData.image.name}
                       </p>
                     </div>
@@ -303,11 +307,11 @@ export default function MaintenanceRequest({ params }: { params: Promise<{ local
                 {errors.image && (
                   <p className="text-red-500 text-xs mt-1">{errors.image}</p>
                 )}
-              </div>
+              </div> */}
 
               {/* Schedule Message */}
-              <div className="bg-blue-50 p-4 rounded-md">
-                <p className="text-sm text-blue-800 text-center">
+              <div className="bg-[#FAF6F5] p-4 rounded-md border border-[#EDEBED]">
+                <p className="text-sm text-[#274754] text-center font-medium">
                   {t.scheduleMessage}
                 </p>
               </div>
@@ -316,7 +320,7 @@ export default function MaintenanceRequest({ params }: { params: Promise<{ local
               <Button
                 type="submit"
                 disabled={isSubmitting}
-                className="w-full bg-blue-600 hover:bg-blue-700"
+                className="w-full bg-[#274754] hover:bg-[#94782C] text-white font-bold"
               >
                 {isSubmitting ? (
                   <>

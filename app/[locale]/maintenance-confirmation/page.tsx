@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
+import { getMessages } from '@/messages';
 
 interface MaintenanceFormData {
   topic: string;
@@ -18,44 +19,26 @@ export default function MaintenanceConfirmation({ params }: { params: Promise<{ 
   const [locale, setLocale] = useState('en');
   const [formData, setFormData] = useState<MaintenanceFormData | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [showSuccessAlert, setShowSuccessAlert] = useState(false);
 
-  // Translations
-  const translations = {
-    en: {
-      title: "Confirm Maintenance Request",
-      reviewRequest: "Please review your maintenance request",
-      topic: "Topic",
-      mobileNumber: "Mobile Number",
-      message: "Message",
-      attachedPhoto: "Attached Photo",
-      noPhoto: "No photo attached",
-      confirm: "Confirm & Send",
-      edit: "Edit",
-      cancel: "Cancel",
-      back: "Back",
-      sending: "Sending...",
-      success: "Request sent successfully!",
-      error: "Failed to send request. Please try again."
-    },
-    ar: {
-      title: "تأكيد طلب الصيانة",
-      reviewRequest: "يرجى مراجعة طلب الصيانة الخاص بك",
-      topic: "الموضوع",
-      mobileNumber: "رقم الجوال",
-      message: "الرسالة",
-      attachedPhoto: "الصورة المرفقة",
-      noPhoto: "لا توجد صورة مرفقة",
-      confirm: "تأكيد وإرسال",
-      edit: "تعديل",
-      cancel: "إلغاء",
-      back: "رجوع",
-      sending: "جاري الإرسال...",
-      success: "تم إرسال الطلب بنجاح!",
-      error: "فشل في إرسال الطلب. يرجى المحاولة مرة أخرى."
-    }
+  // Translations moved to messages folder
+  const all = getMessages(locale as 'en' | 'ar');
+  const t = {
+    title: all.mc_title,
+    reviewRequest: all.mc_reviewRequest,
+    topic: all.mc_topic,
+    mobileNumber: all.mc_mobileNumber,
+    message: all.mc_message,
+    attachedPhoto: all.mc_attachedPhoto,
+    noPhoto: all.mc_noPhoto,
+    confirm: all.mc_confirm,
+    edit: all.mc_edit,
+    cancel: all.mc_cancel,
+    back: all.mc_back,
+    sending: all.mc_sending,
+    success: all.mc_success,
+    error: all.mc_error,
   };
-
-  const t = translations[locale as keyof typeof translations];
 
   // Initialize locale and load form data
   useEffect(() => {
@@ -73,22 +56,78 @@ export default function MaintenanceConfirmation({ params }: { params: Promise<{ 
     }
   }, [params, router, locale]);
 
+  const uploadImageToImgBB = async (file: File): Promise<string | null> => {
+    try {
+      const formData = new FormData();
+      formData.append('image', file);
+      
+      const response = await fetch('https://api.imgbb.com/1/upload?key=546c25a59c58ad7', {
+        method: 'POST',
+        body: formData,
+      });
+      
+      const data = await response.json();
+      return data.success ? data.data.url : null;
+    } catch (error) {
+      console.error('Error uploading image to ImgBB:', error);
+      return null;
+    }
+  };
+
+  const uploadImage = async (file: File): Promise<string | null> => {
+    // Try ImgBB for image upload
+    return await uploadImageToImgBB(file);
+  };
+
   const handleConfirm = async () => {
     if (!formData) return;
 
     setIsSubmitting(true);
 
     try {
-      // Simulate API call
-      await new Promise(resolve => setTimeout(resolve, 2000));
+      // Upload image if present - Commented out - will be used later
+      // let imageUrl = null;
+      // if (formData.image) {
+      //   imageUrl = await uploadImage(formData.image);
+      // }
+
+      // Create WhatsApp message with maintenance request details
+      let whatsappMessage = `Hello! I have a maintenance request for accommodation "Alaredh R217":
+
+Topic: ${formData.topic}
+Message: ${formData.message}`;
+
+      // Image and mobile number references commented out - will be used later
+      // Mobile: ${formData.mobileNumber}
+      // if (imageUrl) {
+      //   whatsappMessage += `\n\n📷 Image: ${imageUrl}`;
+      // } else if (formData.imagePreview) {
+      //   whatsappMessage += `\n\n📷 I have attached a photo with this request (please check your gallery).`;
+      // } else {
+      //   whatsappMessage += `\n\nNo photo attached.`;
+      // }
+
+      whatsappMessage += `\n\nPlease help me with this maintenance request. Thank you!`;
+      
+      // Encode the message for URL
+      const encodedMessage = encodeURIComponent(whatsappMessage);
+      const whatsappUrl = `https://wa.me/966537665619?text=${encodedMessage}`;
       
       // Clear stored data
       sessionStorage.removeItem('maintenanceRequest');
       
-      // Show success message briefly then redirect
+      // Show success message briefly then redirect to WhatsApp
       setTimeout(() => {
-        router.push(`/${locale}`);
-      }, 1500);
+        setIsSubmitting(false);
+        setShowSuccessAlert(true);
+        
+        // Redirect to WhatsApp after showing alert
+        setTimeout(() => {
+          window.open(whatsappUrl, '_blank');
+          // Also redirect to home page as fallback
+          router.push(`/${locale}`);
+        }, 2000);
+      }, 1000);
     } catch (error) {
       console.error('Error submitting maintenance request:', error);
       setIsSubmitting(false);
@@ -106,10 +145,10 @@ export default function MaintenanceConfirmation({ params }: { params: Promise<{ 
 
   if (!formData) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+      <div className="min-h-screen bg-[#FAF6F5] flex items-center justify-center">
         <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
-          <p className="text-gray-600">Loading...</p>
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#274754] mx-auto mb-4"></div>
+          <p className="text-[#274754]">Loading...</p>
         </div>
       </div>
     );
@@ -118,73 +157,98 @@ export default function MaintenanceConfirmation({ params }: { params: Promise<{ 
   const isRTL = locale === 'ar';
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-[#FAF6F5]">
       {/* Header */}
-      <div className="bg-white shadow-sm px-4 py-4 flex items-center">
+      <div className="bg-white shadow-sm border-b border-[#EDEBED] px-4 py-4 flex items-center">
         <Button
           variant="ghost"
           size="sm"
           onClick={() => router.back()}
-          className="mr-2"
+          className="mr-2 text-[#274754] hover:bg-[#EDEBED]"
         >
           <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
           </svg>
           {t.back}
         </Button>
-        <h1 className="text-lg font-semibold text-gray-800">{t.title}</h1>
+        <h1 className="text-lg font-semibold text-[#274754]">{t.title}</h1>
       </div>
 
+      {/* Success Alert */}
+      {showSuccessAlert && (
+        <div className="fixed top-4 left-4 right-4 z-50 animate-in slide-in-from-top-2 duration-300">
+          <div className="bg-green-50 border border-green-200 rounded-lg p-4 shadow-lg">
+            <div className="flex items-center">
+              <svg className="h-5 w-5 text-green-600 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+              <div>
+                <h3 className="text-sm font-medium text-green-800">Maintenance Request Prepared!</h3>
+                <p className="text-sm text-green-700 mt-1">
+                  You will be redirected to WhatsApp in a few seconds to send your request.
+                  {/* Commented out - will be used later */}
+                  {/* {formData?.imagePreview && (
+                    <span className="block mt-1 font-medium">
+                      📷 Don't forget to attach your photo in WhatsApp!
+                    </span>
+                  )} */}
+                </p>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
       <div className="px-4 py-6">
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-center">{t.title}</CardTitle>
-            <p className="text-sm text-gray-600 text-center">{t.reviewRequest}</p>
+        <Card className="border border-[#EDEBED] bg-white shadow-sm">
+          <CardHeader className="border-b border-[#EDEBED]">
+            <CardTitle className="text-center text-[#274754]">{t.title}</CardTitle>
+            <p className="text-sm text-[#94782C] text-center">{t.reviewRequest}</p>
           </CardHeader>
           <CardContent>
             <div className="space-y-6">
               {/* Topic */}
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
+                <label className="block text-sm font-medium text-[#94782C] mb-2">
                   {t.topic}
                 </label>
-                <div className="p-3 bg-gray-50 rounded-md border">
-                  <p className="text-gray-800" dir={isRTL ? 'rtl' : 'ltr'}>
+                <div className="p-3 bg-white rounded-md border border-[#EDEBED]">
+                  <p className="text-[#274754]" dir={isRTL ? 'rtl' : 'ltr'}>
                     {formData.topic}
                   </p>
                 </div>
               </div>
 
-              {/* Mobile Number */}
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
+              {/* Mobile Number - Commented out - will be used later */}
+              {/* <div>
+                <label className="block text-sm font-medium text-[#94782C] mb-2">
                   {t.mobileNumber}
                 </label>
-                <div className="p-3 bg-gray-50 rounded-md border">
-                  <p className="text-gray-800" dir={isRTL ? 'rtl' : 'ltr'}>
+                <div className="p-3 bg-white rounded-md border border-[#EDEBED]">
+                  <p className="text-[#274754]" dir={isRTL ? 'rtl' : 'ltr'}>
                     {formData.mobileNumber}
                   </p>
                 </div>
-              </div>
+              </div> */}
 
               {/* Message */}
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
+                <label className="block text-sm font-medium text-[#94782C] mb-2">
                   {t.message}
                 </label>
-                <div className="p-3 bg-gray-50 rounded-md border">
-                  <p className="text-gray-800 whitespace-pre-wrap" dir={isRTL ? 'rtl' : 'ltr'}>
+                <div className="p-3 bg-white rounded-md border border-[#EDEBED]">
+                  <p className="text-[#274754] whitespace-pre-wrap" dir={isRTL ? 'rtl' : 'ltr'}>
                     {formData.message}
                   </p>
                 </div>
               </div>
 
-              {/* Attached Photo */}
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
+              {/* Attached Photo - Commented out - will be used later */}
+              {/* <div>
+                <label className="block text-sm font-medium text-[#94782C] mb-2">
                   {t.attachedPhoto}
                 </label>
-                <div className="p-3 bg-gray-50 rounded-md border">
+                <div className="p-3 bg-white rounded-md border border-[#EDEBED]">
                   {formData.imagePreview ? (
                     <div>
                       <img
@@ -192,22 +256,22 @@ export default function MaintenanceConfirmation({ params }: { params: Promise<{ 
                         alt="Attached photo"
                         className="w-full h-32 object-cover rounded-md"
                       />
-                      <p className="text-xs text-gray-500 mt-2">
+                      <p className="text-xs text-[#94782C] mt-2">
                         {formData.image?.name || 'Attached photo'}
                       </p>
                     </div>
                   ) : (
-                    <p className="text-gray-500 text-sm">{t.noPhoto}</p>
+                    <p className="text-[#94782C] text-sm">{t.noPhoto}</p>
                   )}
                 </div>
-              </div>
+              </div> */}
 
               {/* Action Buttons */}
               <div className="space-y-3 pt-4">
                 <Button
                   onClick={handleConfirm}
                   disabled={isSubmitting}
-                  className="w-full bg-green-600 hover:bg-green-700"
+                  className="w-full bg-[#274754] hover:bg-[#94782C] text-white font-bold"
                 >
                   {isSubmitting ? (
                     <>
@@ -227,6 +291,7 @@ export default function MaintenanceConfirmation({ params }: { params: Promise<{ 
                     onClick={handleEdit}
                     variant="outline"
                     disabled={isSubmitting}
+                    className="border-[#EDEBED] text-[#274754] hover:bg-[#EDEBED]"
                   >
                     {t.edit}
                   </Button>
@@ -234,7 +299,7 @@ export default function MaintenanceConfirmation({ params }: { params: Promise<{ 
                     onClick={handleCancel}
                     variant="outline"
                     disabled={isSubmitting}
-                    className="text-red-600 hover:text-red-700 hover:bg-red-50"
+                    className="border-[#EDEBED] text-red-600 hover:text-red-700 hover:bg-red-50"
                   >
                     {t.cancel}
                   </Button>
