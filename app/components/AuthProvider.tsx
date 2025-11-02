@@ -1,7 +1,9 @@
 'use client';
 
-import { createContext, useContext, useEffect, useState, ReactNode } from 'react';
+import { createContext, useContext, useEffect, useState, ReactNode, useRef } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
+import { getCurrentUnit, clearCachedUnit } from '@/lib/apiUtils';
+import { isBookingAccessValid, getCheckoutTime } from '@/lib/bookingUtils';
 
 interface BookingData {
   reference: string;
@@ -37,6 +39,29 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const router = useRouter();
   const pathname = usePathname();
 
+  // Define logout function early so it can be used in other effects
+  const logout = () => {
+    localStorage.removeItem('isAuthenticated');
+    localStorage.removeItem('accessCode');
+    localStorage.removeItem('bookingData');
+    localStorage.removeItem('jwtToken');
+    
+    // Clear unit cache
+    clearCachedUnit();
+    
+    // Clear cookies
+    document.cookie = 'isAuthenticated=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT';
+    document.cookie = 'accessCode=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT';
+    document.cookie = 'jwtToken=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT';
+    
+    setIsAuthenticated(false);
+    setAccessCode(null);
+    setBookingData(null);
+    
+    const locale = pathname?.split('/')[1] || 'en';
+    router.push(`/${locale}/login`);
+  };
+
   useEffect(() => {
     // Check authentication status on mount
     const authStatus = localStorage.getItem('isAuthenticated');
@@ -46,6 +71,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     if (authStatus === 'true' && storedCode && storedBookingData) {
       try {
         const parsedBookingData = JSON.parse(storedBookingData);
+        
+        // Validate booking access before setting authenticated state
+        if (!isBookingAccessValid()) {
+          // Booking expired, clear all data
+          console.log('⚠️ [Auth] Booking access expired, logging out');
+          logout();
+          setIsLoading(false);
+          return;
+        }
+        
         setIsAuthenticated(true);
         setAccessCode(storedCode);
         setBookingData(parsedBookingData);
@@ -104,17 +139,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       const { token, booking, accessValidUntil } = responseData;
       const now = new Date();
       
-      // Store authentication data in localStorage
-      localStorage.setItem('isAuthenticated', 'true');
-      localStorage.setItem('accessCode', code);
-      localStorage.setItem('bookingData', JSON.stringify({
+      const bookingDataObj = {
         reference: booking.reference,
         arrival: booking.arrival,
         departure: booking.departure,
         accommodation: booking.accommodation,
         accessValidUntil: accessValidUntil,
         token: token
-      }));
+      };
+      
+      // Store authentication data in localStorage
+      localStorage.setItem('isAuthenticated', 'true');
+      localStorage.setItem('accessCode', code);
+      localStorage.setItem('bookingData', JSON.stringify(bookingDataObj));
       localStorage.setItem('jwtToken', token);
       
       // Set cookies for SSR compatibility
@@ -124,14 +161,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       
       setIsAuthenticated(true);
       setAccessCode(code);
-      setBookingData({
-        reference: booking.reference,
-        arrival: booking.arrival,
-        departure: booking.departure,
-        accommodation: booking.accommodation,
-        accessValidUntil: accessValidUntil,
-        token: token
-      });
+      setBookingData(bookingDataObj);
+      
+      // Fetch and cache unit data for this booking
+      try {
+        const unit = await getCurrentUnit(booking.accommodation, true); // Force refresh on login
+        if (unit && DEBUG_MODE) {
+          console.log('✅ [Auth] Unit data loaded and cached:', unit.Reference);
+        }
+      } catch (error) {
+        console.error('❌ [Auth] Failed to load unit data:', error);
+        // Don't fail login if unit fetch fails, user can still access the app
+      }
       
       return { success: true };
     } catch (error) {
@@ -145,7 +186,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   const refreshBookingData = async (): Promise<void> => {
-    if (!accessCode) return;
+    if (!accessCode || !bookingData) return;
     
     try {
       // Fetch all bookings and filter on client side
@@ -157,8 +198,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       });
 
       if (bookingResponse.ok) {
-        const bookingData = await bookingResponse.json();
-        const booking = bookingData.data.find((b: any) => b.Booking_Reference_Number.toString() === accessCode);
+        const bookingDataResp = await bookingResponse.json();
+        const booking = bookingDataResp.data.find((b: any) => b.Booking_Reference_Number.toString() === accessCode);
         
         if (booking) {
           const now = new Date();
@@ -169,7 +210,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           arrivalTime.setHours(15, 45, 0, 0);
           
           const departureTime = new Date(departureDate);
-          departureTime.setHours(12, 0, 0, 0);
+          departureTime.setHours(12, 30, 0, 0); // 12:30 PM checkout
           
           const token = btoa(JSON.stringify({
             bookingReference: accessCode,
@@ -188,12 +229,27 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             token: token
           };
           
+          // Check if accommodation changed
+          const accommodationChanged = bookingData.accommodation !== booking.Accommodation;
+          
           // Update localStorage
           localStorage.setItem('bookingData', JSON.stringify(updatedBookingData));
           localStorage.setItem('jwtToken', token);
           
           // Update state
           setBookingData(updatedBookingData);
+          
+          // If accommodation changed, refresh unit data
+          if (accommodationChanged) {
+            try {
+              const unit = await getCurrentUnit(booking.Accommodation, true); // Force refresh
+              if (unit && DEBUG_MODE) {
+                console.log('✅ [Auth] Unit data refreshed after accommodation change:', unit.Reference);
+              }
+            } catch (error) {
+              console.error('❌ [Auth] Failed to refresh unit data:', error);
+            }
+          }
         }
       }
     } catch (error) {
@@ -201,24 +257,46 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   };
 
-  const logout = () => {
-    localStorage.removeItem('isAuthenticated');
-    localStorage.removeItem('accessCode');
-    localStorage.removeItem('bookingData');
-    localStorage.removeItem('jwtToken');
-    
-    // Clear cookies
-    document.cookie = 'isAuthenticated=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT';
-    document.cookie = 'accessCode=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT';
-    document.cookie = 'jwtToken=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT';
-    
-    setIsAuthenticated(false);
-    setAccessCode(null);
-    setBookingData(null);
-    
-    const locale = pathname?.split('/')[1] || 'en';
-    router.push(`/${locale}/login`);
-  };
+  // Periodically check if checkout time has passed
+  useEffect(() => {
+    if (!isAuthenticated || !bookingData) return;
+
+    const checkCheckoutTime = () => {
+      if (!isBookingAccessValid()) {
+        console.log('⏰ [Auth] Checkout time passed, automatically logging out');
+        logout();
+      }
+    };
+
+    // Check immediately
+    checkCheckoutTime();
+
+    // Set up interval to check every minute
+    const intervalId = setInterval(checkCheckoutTime, 60000); // Check every minute
+
+    // Also set a timeout for exact checkout time
+    const checkoutTime = getCheckoutTime();
+    if (checkoutTime) {
+      const now = new Date();
+      const timeUntilCheckout = checkoutTime.getTime() - now.getTime();
+      
+      if (timeUntilCheckout > 0) {
+        const timeoutId = setTimeout(() => {
+          console.log('⏰ [Auth] Checkout time reached (12:30 PM), logging out');
+          logout();
+        }, timeUntilCheckout);
+        
+        return () => {
+          clearInterval(intervalId);
+          clearTimeout(timeoutId);
+        };
+      }
+    }
+
+    return () => {
+      clearInterval(intervalId);
+    };
+  }, [isAuthenticated, bookingData]);
 
   return (
     <AuthContext.Provider value={{ 

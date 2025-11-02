@@ -40,6 +40,7 @@ export function getBookingDataFromStorage(): BookingData | null {
 
 /**
  * Check if the booking access is still valid
+ * Checks both the accessValidUntil timestamp and validates against checkout time (12:30 PM)
  * @returns true if access is valid, false otherwise
  */
 export function isBookingAccessValid(): boolean {
@@ -47,9 +48,37 @@ export function isBookingAccessValid(): boolean {
   if (!bookingData) return false;
   
   const now = new Date();
-  const accessValidUntil = new Date(bookingData.accessValidUntil);
+  const departureDate = new Date(bookingData.departure);
   
+  // Set checkout time to 12:30 PM (12:30) on departure date
+  const checkoutTime = new Date(departureDate);
+  checkoutTime.setHours(12, 30, 0, 0); // 12:30 PM
+  
+  // Check if current time is past checkout time
+  if (now >= checkoutTime) {
+    return false;
+  }
+  
+  // Also check accessValidUntil timestamp (fallback)
+  const accessValidUntil = new Date(bookingData.accessValidUntil);
   return now < accessValidUntil;
+}
+
+/**
+ * Get checkout time for current booking
+ * @returns Checkout Date object (12:30 PM on departure date) or null
+ */
+export function getCheckoutTime(): Date | null {
+  const bookingData = getBookingDataFromStorage();
+  if (!bookingData) return null;
+  
+  const departureDate = new Date(bookingData.departure);
+  if (isNaN(departureDate.getTime())) return null;
+  
+  const checkoutTime = new Date(departureDate);
+  checkoutTime.setHours(12, 30, 0, 0); // 12:30 PM
+  
+  return checkoutTime;
 }
 
 /**

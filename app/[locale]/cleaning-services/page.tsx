@@ -33,7 +33,7 @@ const translations = {
     fullCleaningDesc: "Complete cleaning of your entire unit",
     
     monthlyTitle: "Monthly Package",
-    monthlyDesc: "4 visits per month",
+    monthlyDesc: "4 visits per month • Save 20%",
     
     linensTitle: "Fresh Linens",
     linensDesc: "Bed sheets, blankets & towels",
@@ -59,8 +59,6 @@ const translations = {
     todayOnly: "Available today",
     workingHours: "3:00 PM - 8:00 PM",
     lateNote: "Requests after 7 PM scheduled for next day",
-    contactMessage: "We will contact you",
-    expectedArrival: "Expected arrival time for cleaning is in 2 hours",
     
     // Confirmation
     reviewBooking: "Review your booking",
@@ -116,8 +114,6 @@ const translations = {
     todayOnly: "متاح اليوم",
     workingHours: "3:00 مساءً - 8:00 مساءً",
     lateNote: "الطلبات بعد 7 مساءً تُجدول لليوم التالي",
-    contactMessage: "سنقوم بالاتصال بك",
-    expectedArrival: "الوقت المتوقع للوصول للتنظيف خلال ساعتين",
     
     reviewBooking: "راجع حجزك",
     totalPrice: "المجموع",
@@ -137,6 +133,7 @@ interface ServiceOption {
   price: number;
   duration: string;
   category: 'cleaning' | 'monthly' | 'linens' | 'extras';
+  popular?: boolean;
   unitTypes: string[];
 }
 
@@ -155,24 +152,6 @@ export default function CleaningServices({ params }: { params: Promise<{ locale:
       setLocale(paramLocale || 'en');
     });
   }, [params]);
-
-  // Force LTR layout for Arabic in this page
-  useEffect(() => {
-    if (locale === 'ar') {
-      const pageContainer = document.querySelector('[data-cleaning-page]');
-      if (pageContainer) {
-        (pageContainer as HTMLElement).style.direction = 'ltr';
-        (pageContainer as HTMLElement).style.textAlign = 'left';
-      }
-      // Also force LTR on the document element for this page
-      const originalDir = document.documentElement.dir;
-      document.documentElement.dir = 'ltr';
-      
-      return () => {
-        document.documentElement.dir = originalDir;
-      };
-    }
-  }, [locale]);
 
   useEffect(() => {
     if (!['en', 'ar'].includes(locale)) {
@@ -284,6 +263,7 @@ export default function CleaningServices({ params }: { params: Promise<{ locale:
       price: 200,
       duration: '2h',
       category: 'cleaning',
+      popular: true,
       unitTypes: ['studio']
     },
     {
@@ -294,6 +274,7 @@ export default function CleaningServices({ params }: { params: Promise<{ locale:
       price: 260,
       duration: '2h',
       category: 'cleaning',
+      popular: true,
       unitTypes: ['1-bedroom']
     },
     {
@@ -304,6 +285,7 @@ export default function CleaningServices({ params }: { params: Promise<{ locale:
       price: 365,
       duration: '2h',
       category: 'cleaning',
+      popular: true,
       unitTypes: ['2-bedroom']
     },
     {
@@ -314,6 +296,7 @@ export default function CleaningServices({ params }: { params: Promise<{ locale:
       price: 380,
       duration: '2h',
       category: 'cleaning',
+      popular: true,
       unitTypes: ['3-bedroom']
     },
     {
@@ -355,15 +338,6 @@ export default function CleaningServices({ params }: { params: Promise<{ locale:
       duration: '4 visits',
       category: 'monthly',
       unitTypes: ['3-bedroom']
-    },{
-      id: 'guest-package',
-      title: t.guestTitle,
-      description: t.guestDesc,
-      icon: '👥',
-      price: 85,
-      duration: '30min',
-      category: 'extras',
-      unitTypes: ['studio', '1-bedroom', '2-bedroom', '3-bedroom']
     },
     {
       id: 'linens-master',
@@ -394,18 +368,22 @@ export default function CleaningServices({ params }: { params: Promise<{ locale:
       duration: '1h',
       category: 'linens',
       unitTypes: ['2-bedroom', '3-bedroom']
+    },
+    {
+      id: 'guest-package',
+      title: t.guestTitle,
+      description: t.guestDesc,
+      icon: '👥',
+      price: 85,
+      duration: '30min',
+      category: 'extras',
+      unitTypes: ['studio', '1-bedroom', '2-bedroom', '3-bedroom']
     }
   ];
 
   const availableServices = allServices.filter(service => 
     service.unitTypes.includes(unitType)
   );
-
-  const formatTime12Hour = (hour: number): string => {
-    const period = hour >= 12 ? 'PM' : 'AM';
-    const displayHour = hour === 0 ? 12 : hour > 12 ? hour - 12 : hour;
-    return `${displayHour}:00 ${period}`;
-  };
 
   const getAvailableTimeSlots = () => {
     const now = new Date();
@@ -415,22 +393,15 @@ export default function CleaningServices({ params }: { params: Promise<{ locale:
     
     const slots = [];
     for (let hour = 15; hour < 20; hour++) {
-      const timeSlot24 = `${hour.toString().padStart(2, '0')}:00`;
-      const timeSlot12 = formatTime12Hour(hour);
+      const timeSlot = `${hour.toString().padStart(2, '0')}:00`;
       const slotTime = hour * 60;
       
       if (slotTime > currentTime) {
-        slots.push({ display: timeSlot12, value: timeSlot24, hour });
+        slots.push(timeSlot);
       }
     }
     
     return slots;
-  };
-
-  const calculateArrivalTime = (selectedTime24: string): string => {
-    const [hours, minutes] = selectedTime24.split(':').map(Number);
-    const arrivalHour = (hours + 2) % 24;
-    return formatTime12Hour(arrivalHour);
   };
 
   const handleServiceSelect = (serviceId: string) => {
@@ -438,8 +409,8 @@ export default function CleaningServices({ params }: { params: Promise<{ locale:
     setCurrentStep('time');
   };
 
-  const handleTimeSelect = (time24: string) => {
-    setSelectedTime(time24);
+  const handleTimeSelect = (time: string) => {
+    setSelectedTime(time);
     setCurrentStep('confirmation');
   };
 
@@ -449,29 +420,18 @@ export default function CleaningServices({ params }: { params: Promise<{ locale:
     const service = availableServices.find(s => s.id === selectedService);
     if (!service) return;
     
-    // Calculate arrival time (2 hours after selected time)
-    const arrivalTime = calculateArrivalTime(selectedTime);
-    const selectedTime12 = formatTime12Hour(parseInt(selectedTime.split(':')[0]));
-    
     // Create WhatsApp message
     const bookingData = getBookingDataFromStorage();
-    const message = locale === 'ar' 
-      ? `مرحباً! أود طلب خدمة تنظيف:\n\n` +
-        `📋 الخدمة: ${service.title}\n` +
-        `🏠 الوحدة: ${currentUnit.Reference}\n` +
-        `🛏️ نوع الوحدة: ${currentUnit.Number_of_bedrooms} غرفة نوم\n` +
-        `🏢 المبنى: ${currentUnit.Development}\n` +
-        `⏰ الوقت المفضل: ${selectedTime12}\n` +
-        `🚀 الوقت المتوقع للوصول: ${arrivalTime}\n` +
-        `💰 السعر: ${service.price} ريال${bookingData?.reference ? `\n📝 مرجع الحجز: ${bookingData.reference}` : ''}`
-      : `Hello! I would like to request a cleaning service:\n\n` +
-        `📋 Service: ${service.title}\n` +
-        `🏠 Unit: ${currentUnit.Reference}\n` +
-        `🛏️ Unit Type: ${currentUnit.Number_of_bedrooms} bedroom\n` +
-        `🏢 Building: ${currentUnit.Development}\n` +
-        `⏰ Preferred Time: ${selectedTime12}\n` +
-        `🚀 Expected Arrival Time: ${arrivalTime}\n` +
-        `💰 Price: ${service.price} SAR${bookingData?.reference ? `\n📝 Booking Reference: ${bookingData.reference}` : ''}`;
+    const message = `Hello! I would like to request a cleaning service:\n\n` +
+      `📋 Service: ${service.title}\n` +
+      `🏠 Unit: ${currentUnit.Reference}\n` +
+      `🛏️ Unit Type: ${currentUnit.Number_of_bedrooms} bedroom\n` +
+      `🏢 Building: ${currentUnit.Development}\n` +
+      `⏰ Preferred Time: ${selectedTime}\n` +
+      `💰 Price: ${service.price} SAR\n\n` +
+      `Guest Name: ${bookingData?.guestName || 'N/A'}\n` +
+      `Email: ${bookingData?.email || 'N/A'}\n` +
+      `Phone: ${bookingData?.phone || 'N/A'}`;
     
     const whatsappNumber = '966500000000'; // Replace with actual customer service number
     const encodedMessage = encodeURIComponent(message);
@@ -484,16 +444,16 @@ export default function CleaningServices({ params }: { params: Promise<{ locale:
 
   return (
     <LocaleLayout locale={locale}>
-      <div className="min-h-screen bg-[#FAF6F5]" data-cleaning-page dir="ltr" style={{ direction: 'ltr', textAlign: 'left' }}>
+      <div className="min-h-screen bg-[#FAF6F5]">
         {/* Header */}
         <div className="bg-white sticky top-0 z-10 shadow-sm">
           <div className="px-4 py-4">
-            <div className="flex items-center mb-3" style={{ direction: 'ltr' }}>
+            <div className="flex items-center mb-3">
               <button 
                 onClick={() => currentStep === 'service' ? router.back() : setCurrentStep(currentStep === 'confirmation' ? 'time' : 'service')}
                 className="p-2 -ml-2 text-[#274754]"
               >
-                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" style={{ transform: 'none' }}>
+                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
                 </svg>
               </button>
@@ -531,13 +491,26 @@ export default function CleaningServices({ params }: { params: Promise<{ locale:
         {/* Service Selection */}
         {currentStep === 'service' && (
           <div className="pb-6">
-            
+            {/* Unit Info Card */}
+            <div className="px-4 pt-4 pb-2">
+              <div className="bg-white border border-[#EDEBED] rounded-2xl p-4 shadow-sm">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-xs text-[#94782C] mb-1">{t.yourUnit}</p>
+                    <p className="text-lg font-bold text-[#274754]">{currentUnit.Reference}</p>
+                    <p className="text-sm text-[#94782C]">{currentUnit.Number_of_bedrooms} bedroom • {remainingDays} days</p>
+                  </div>
+                  <div className="text-4xl">🏠</div>
+                </div>
+              </div>
+            </div>
+
             {/* Quick Actions */}
             <div className="px-4 pt-4">
               <h2 className="text-base font-bold text-[#274754] mb-3">{t.recommended}</h2>
               <div className="space-y-3">
                 {availableServices
-                  .filter(s => s.category === 'cleaning')
+                  .filter(s => s.popular || s.category === 'cleaning')
                   .slice(0, 2)
                   .map((service) => (
                     <button
@@ -550,9 +523,23 @@ export default function CleaningServices({ params }: { params: Promise<{ locale:
                         <div className="flex-1 text-left">
                           <div className="flex items-center gap-2 mb-1">
                             <h3 className="font-bold text-[#274754]">{service.title}</h3>
+                            {service.popular && (
+                              <span className="bg-[#CDB990] text-white text-xs px-2 py-0.5 rounded-full font-medium">
+                                {t.popular}
+                              </span>
+                            )}
                           </div>
                           <p className="text-xs text-[#94782C] mb-2">{service.description}</p>
-                         
+                          <div className="flex items-center gap-3 text-xs text-[#274754]">
+                            <span className="flex items-center gap-1">
+                              <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                              </svg>
+                              {service.duration}
+                            </span>
+                            <span className="text-[#94782C]">•</span>
+                            <span>{t.todayOnly}</span>
+                          </div>
                         </div>
                         <div className="text-right ml-4">
                           <p className="text-lg font-bold text-[#274754]">{service.price}</p>
@@ -581,6 +568,9 @@ export default function CleaningServices({ params }: { params: Promise<{ locale:
                         <div className="flex-1 text-left">
                           <h3 className="font-bold text-[#274754] mb-1">{service.title}</h3>
                           <p className="text-xs text-[#94782C] mb-2">{service.description}</p>
+                          <div className="inline-block bg-[#CDB990] text-white text-xs px-2 py-1 rounded-full">
+                            {t.saveUp} 20%
+                          </div>
                         </div>
                         <div className="text-right ml-4">
                           <p className="text-2xl font-bold text-[#274754]">{service.price}</p>
@@ -633,30 +623,19 @@ export default function CleaningServices({ params }: { params: Promise<{ locale:
             <p className="text-sm text-[#94782C] mb-4">{t.workingHours}</p>
 
             <div className="grid grid-cols-3 gap-3 mb-4">
-              {getAvailableTimeSlots().map((timeSlot) => (
+              {getAvailableTimeSlots().map((time) => (
                 <button
-                  key={timeSlot.value}
-                  onClick={() => handleTimeSelect(timeSlot.value)}
+                  key={time}
+                  onClick={() => handleTimeSelect(time)}
                   className={`py-4 rounded-xl font-medium transition-all ${
-                    selectedTime === timeSlot.value
+                    selectedTime === time
                       ? 'bg-[#274754] text-white shadow-lg scale-105'
                       : 'bg-white text-[#274754] shadow-sm active:scale-95'
                   }`}
                 >
-                  {timeSlot.display}
+                  {time}
                 </button>
               ))}
-            </div>
-
-            {/* Contact and Arrival Time Message */}
-            <div className="bg-[#E8F4F8] rounded-xl p-4 mb-4 border border-[#CDE7F0]">
-              <div className="flex items-start gap-3">
-                <span className="text-2xl">📞</span>
-                <div className="flex-1">
-                  <p className="font-semibold text-[#274754] mb-1">{t.contactMessage}</p>
-                  <p className="text-sm text-[#274754]">{t.expectedArrival}</p>
-                </div>
-              </div>
             </div>
 
             <div className="bg-[#FAF6F5] rounded-xl p-3 text-sm text-[#274754] border border-[#EDEBED]">
@@ -689,9 +668,7 @@ export default function CleaningServices({ params }: { params: Promise<{ locale:
                 </div>
                 <div className="flex justify-between">
                   <span className="text-[#94782C]">Time</span>
-                  <span className="font-medium text-[#274754]">
-                    {formatTime12Hour(parseInt(selectedTime.split(':')[0]))}
-                  </span>
+                  <span className="font-medium text-[#274754]">{selectedTime}</span>
                 </div>
                 <div className="flex justify-between">
                   <span className="text-[#94782C]">Duration</span>

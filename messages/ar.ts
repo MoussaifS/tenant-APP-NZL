@@ -167,6 +167,30 @@ export const ar = {
     whatsappDescription: "تحدث معنا على واتساب للحصول على مساعدة سريعة",
     chatOnWhatsapp: "التواصل عبر واتساب",
     whatsappMessage: "مرحباً، أحتاج مساعدة"
+  },
+
+  // Partners
+  partners: {
+    title: "شركاؤنا",
+    subtitle: "خصومات وخدمات حصرية لضيوفنا",
+    conciergeServices: "خدمات الكونسيرج",
+    coupons: "كوبونات وخصومات",
+    contactPartner: "تواصل مع الشريك",
+    visitWebsite: "زيارة الموقع",
+    callNow: "اتصل الآن",
+    getCoupons: "الحصول على كوبونات",
+    mezwalah: {
+      name: "ميزوالة",
+      description: "في ميزوالة، نقدم حلول إدارة الوجهات المخصصة بخدمة عالمية المستوى. يقوم فريقنا الخبير بإنشاء برامج سفر سلسة متعددة الوجهات في المملكة العربية السعودية وخارجها.",
+      industry: "ترتيبات السفر",
+      website: "www.mezwalah.com",
+      phone: "00966507002958"
+    },
+    noonMinutes: {
+      name: "نون مينتس",
+      description: "احصل على كوبونات وخصومات حصرية للعديد من الخدمات والمنتجات.",
+      couponsAvailable: "كوبونات متاحة"
+    }
   }
 };
 

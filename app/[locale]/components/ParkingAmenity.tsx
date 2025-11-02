@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Car } from 'lucide-react';
 import { getBookingDataFromStorage } from '@/lib/bookingUtils';
-import { fetchUnits, extractUnitNumber, Unit } from '@/lib/apiUtils';
+import { getCurrentUnit, Unit } from '@/lib/apiUtils';
 
 interface ParkingAmenityProps {
   locale?: string;
@@ -25,15 +25,9 @@ export default function ParkingAmenity({ locale = 'en' }: ParkingAmenityProps) {
           setError(isRTL ? 'لا تتوفر بيانات الحجز' : 'No booking data found');
           return;
         }
-        const unitNumber = extractUnitNumber(bookingData.accommodation);
-        if (!unitNumber) {
-          setError(isRTL ? 'تعذر استخراج رقم الوحدة' : 'Unable to extract unit number');
-          return;
-        }
-        const units = await fetchUnits();
-        const unit = units.find(u => u.Reference === unitNumber) || null;
+        const unit = await getCurrentUnit(bookingData.accommodation);
         if (!unit) {
-          setError(isRTL ? 'لم يتم العثور على الوحدة' : 'Unit not found');
+          setError(isRTL ? 'لم يتم العثور على الوحدة أو تم رفض الوصول' : 'Unit not found or access denied');
           return;
         }
         setCurrentUnit(unit);

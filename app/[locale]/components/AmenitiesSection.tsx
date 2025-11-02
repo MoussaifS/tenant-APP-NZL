@@ -98,24 +98,24 @@ export default function AmenitiesSection({
         <WifiAmenity locale={locale} />
       )
     },
-    {
-      id: 'features',
-      title: features,
-      icon: <Star className="w-6 h-6 text-yellow-600" />,
-      bgColor: 'bg-yellow-100',
-      modalContent: (
-        <FeaturesAmenity locale={locale} />
-      )
-    },
     // {
-    //   id: 'unitLock',
-    //   title: unitLock,
-    //   icon: <Key className="w-6 h-6 text-green-600" />,
-    //   bgColor: 'bg-green-100',
+    //   id: 'features',
+    //   title: features,
+    //   icon: <Star className="w-6 h-6 text-yellow-600" />,
+    //   bgColor: 'bg-yellow-100',
     //   modalContent: (
-    //     <UnitLockAmenity locale={locale} />
+    //     <FeaturesAmenity locale={locale} />
     //   )
     // },
+    {
+      id: 'unitLock',
+      title: unitLock,
+      icon: <Key className="w-6 h-6 text-green-600" />,
+      bgColor: 'bg-green-100',
+      modalContent: (
+        <UnitLockAmenity locale={locale} />
+      )
+    },
     {
       id: 'parking',
       title: parking,

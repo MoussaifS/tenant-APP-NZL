@@ -160,6 +160,30 @@ export const en = {
     whatsappDescription: "Chat with us on WhatsApp for quick assistance",
     chatOnWhatsapp: "Chat on WhatsApp",
     whatsappMessage: "Hello, I need assistance"
+  },
+
+  // Partners
+  partners: {
+    title: "Our Partners",
+    subtitle: "Exclusive discounts and services for our guests",
+    conciergeServices: "Concierge Services",
+    coupons: "Coupons & Discounts",
+    contactPartner: "Contact Partner",
+    visitWebsite: "Visit Website",
+    callNow: "Call Now",
+    getCoupons: "Get Coupons",
+    mezwalah: {
+      name: "Mezwalah",
+      description: "At Mezwalah, we deliver tailored Destination Management Solutions with top-tier service. Our expert team creates seamless multi-destination itineraries in Saudi Arabia and beyond.",
+      industry: "Travel Arrangements",
+      website: "www.mezwalah.com",
+      phone: "00966507002958"
+    },
+    noonMinutes: {
+      name: "Noon Minutes",
+      description: "Get exclusive coupons and discounts for various services and products.",
+      couponsAvailable: "Coupons Available"
+    }
   }
 };
 

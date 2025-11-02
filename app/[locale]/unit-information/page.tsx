@@ -8,7 +8,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '../../../components/ui
 import { Button } from '../../../components/ui/button';
 import { getBookingDataFromStorage } from '../../../lib/bookingUtils';
 import { getMessages } from '@/messages';
-import { fetchUnits, extractUnitNumber, Unit } from '@/lib/apiUtils';
+import { getCurrentUnit, extractUnitNumber, Unit } from '@/lib/apiUtils';
 
 export default function UnitInformation({ params }: { params: Promise<{ locale: string }> }) {
   const router = useRouter();
@@ -45,17 +45,10 @@ export default function UnitInformation({ params }: { params: Promise<{ locale: 
           return;
         }
 
-        const unitNumber = extractUnitNumber(bookingData.accommodation);
-        if (!unitNumber) {
-          setError(currentT.unableToExtractUnitNumber);
-          return;
-        }
-
-        const units = await fetchUnits();
-        const unit = units.find(u => u.Reference === unitNumber);
+        const unit = await getCurrentUnit(bookingData.accommodation);
         
         if (!unit) {
-          setError(currentT.unitNotFound.replace('{unitNumber}', unitNumber));
+          setError(currentT.unitNotFound.replace('{unitNumber}', extractUnitNumber(bookingData.accommodation) || ''));
           return;
         }
 
