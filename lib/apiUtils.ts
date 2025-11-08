@@ -2,6 +2,8 @@
  * Shared API utility functions for Strapi integration
  */
 
+import { getBookingDataFromStorage } from './bookingUtils';
+
 // Strapi API configuration
 const STRAPI_URL = process.env.NEXT_PUBLIC_STRAPI_URL || 'http://localhost:1337';
 const API_TIMEOUT = parseInt(process.env.NEXT_PUBLIC_API_TIMEOUT || '30000');
@@ -28,11 +30,19 @@ export interface Unit {
 }
 
 /**
- * Get JWT token from localStorage
+ * Get JWT token from localStorage bookingData
  * @returns JWT token string or null
  */
 function getJWTToken(): string | null {
   if (typeof window === 'undefined') return null;
+  
+  // Get token from bookingData in localStorage
+  const bookingData = getBookingDataFromStorage();
+  if (bookingData && bookingData.token) {
+    return bookingData.token;
+  }
+  
+  // Fallback to old jwtToken key for backward compatibility
   return localStorage.getItem('jwtToken');
 }
 
@@ -356,4 +366,445 @@ export function extractUnitNumber(accommodation: string): string {
     return `R${match[1]}`;
   }
   return '';
+}
+
+/**
+ * Request interface matching Strapi API and Arqam CRM
+ */
+export interface CreateRequestData {
+  type: 'extending' | 'cleaning' | 'maintenance';
+  date: string; // ISO datetime string
+  Phone_Number?: string; // Optional, only for maintenance
+  details?: string; // Optional
+  Reference_Number: number | string; // Booking reference number
+  image?: File | null; // Optional image file (deprecated - use imageId and imageUrl instead)
+  imageId?: number; // Optional image ID (uploaded to Strapi first)
+  imageUrl?: string; // Optional accessible image URL (from Google Cloud Storage)
+  // Arqam CRM fields
+  requesttype?: string; // 'نظافة' | 'صيانة' | 'طلب تمديد'
+  requestcategory?: string; // Category based on request type
+  datechekout?: string | null; // Checkout date (null for cleaning/maintenance, date for extension)
+  datechekin?: string | null; // Checkin date (null for cleaning/maintenance, date for extension)
+  roomnumber?: string; // Room/unit number
+  name?: string; // Guest name
+  phone?: string; // Guest phone (alternative to Phone_Number)
+  note?: string; // Additional notes
+}
+
+/**
+ * Find booking by reference number and return its ID
+ * @param referenceNumber - Booking reference number
+ * @returns Booking ID or null if not found
+ */
+export async function findBookingByReference(referenceNumber: string | number): Promise<number | null> {
+  try {
+    const token = getJWTToken();
+    if (!token) {
+      console.error('❌ [API] No JWT token found. User must be authenticated.');
+      return null;
+    }
+
+    // Convert to string for query
+    const refStr = String(referenceNumber);
+    const url = `${STRAPI_URL}${API_BASE_PATH}/bookings?filters[Booking_Reference_Number][$eq]=${encodeURIComponent(refStr)}&pagination[limit]=1`;
+    
+    if (DEBUG_MODE) {
+      console.log('🔍 [API] Finding booking by reference:', refStr);
+      console.log('🔍 [API] URL:', url);
+    }
+    
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), API_TIMEOUT);
+    
+    const response = await fetch(url, {
+      method: 'GET',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`,
+      },
+      signal: controller.signal
+    });
+
+    clearTimeout(timeoutId);
+
+    if (!response.ok) {
+      if (response.status === 401) {
+        console.error('❌ [API] Unauthorized - JWT token invalid or expired');
+        if (typeof window !== 'undefined') {
+          localStorage.removeItem('jwtToken');
+          localStorage.removeItem('isAuthenticated');
+        }
+        throw new Error('Authentication failed. Please log in again.');
+      }
+      const errorText = await response.text();
+      console.error('❌ [API] Error response:', errorText);
+      throw new Error(`Failed to find booking: ${response.status} - ${errorText}`);
+    }
+
+    const data = await response.json();
+    
+    if (DEBUG_MODE) {
+      console.log('✅ [API] Booking found:', data);
+    }
+    
+    if (data.data && data.data.length > 0) {
+      return data.data[0].id;
+    }
+    
+    return null;
+  } catch (error) {
+    if (error instanceof Error && error.name === 'AbortError') {
+      console.error('⏰ [API] Request timeout:', API_TIMEOUT + 'ms');
+      throw new Error(`Request timeout after ${API_TIMEOUT}ms`);
+    }
+    console.error('❌ [API] Error finding booking:', error);
+    throw error;
+  }
+}
+
+/**
+ * Image upload result interface
+ */
+export interface ImageUploadResult {
+  id: number;
+  url: string;
+}
+
+/**
+ * Upload image file to Strapi (automatically stored in Google Cloud Storage)
+ * Images are uploaded BEFORE request components are processed
+ * @param file - Image file to upload
+ * @returns Image upload result with ID and accessible URL, or null if upload fails
+ */
+export async function uploadImageToStrapi(file: File): Promise<ImageUploadResult | null> {
+  try {
+    const token = getJWTToken();
+    if (!token) {
+      console.error('❌ [API] No JWT token found. User must be authenticated.');
+      return null;
+    }
+
+    const formData = new FormData();
+    formData.append('files', file);
+    // Strapi upload API accepts files directly
+    // Metadata can be updated separately if needed
+
+    const url = `${STRAPI_URL}${API_BASE_PATH}/upload`;
+    
+    if (DEBUG_MODE) {
+      console.log('🔍 [API] Uploading image to Strapi (will sync to GCS):', file.name);
+    }
+    
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), API_TIMEOUT * 2); // Longer timeout for file upload
+    
+    const response = await fetch(url, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        // Don't set Content-Type header - let browser set it with boundary for FormData
+      },
+      body: formData,
+      signal: controller.signal
+    });
+
+    clearTimeout(timeoutId);
+
+    if (!response.ok) {
+      if (response.status === 401) {
+        console.error('❌ [API] Unauthorized - JWT token invalid or expired');
+        if (typeof window !== 'undefined') {
+          localStorage.removeItem('jwtToken');
+          localStorage.removeItem('isAuthenticated');
+        }
+        throw new Error('Authentication failed. Please log in again.');
+      }
+      const errorText = await response.text();
+      console.error('❌ [API] Error uploading image:', errorText);
+      return null;
+    }
+
+    const data = await response.json();
+    
+    if (DEBUG_MODE) {
+      console.log('✅ [API] Image uploaded to Strapi:', data);
+    }
+    
+    // Strapi returns an array of uploaded files with accessible URLs
+    // The URL is automatically generated and points to Google Cloud Storage
+    if (Array.isArray(data) && data.length > 0 && data[0].id && data[0].url) {
+      // Construct full URL if relative
+      const imageUrl = data[0].url.startsWith('http') 
+        ? data[0].url 
+        : `${STRAPI_URL}${data[0].url}`;
+      
+      if (DEBUG_MODE) {
+        console.log('✅ [API] Image accessible URL:', imageUrl);
+      }
+      
+      return {
+        id: data[0].id,
+        url: imageUrl
+      };
+    }
+    
+    return null;
+  } catch (error) {
+    if (error instanceof Error && error.name === 'AbortError') {
+      console.error('⏰ [API] Upload timeout');
+      return null;
+    }
+    console.error('❌ [API] Error uploading image:', error);
+    return null;
+  }
+}
+
+/**
+ * Create a request in Strapi
+ * @param requestData - Request data to create
+ * @returns Created request data or null if creation fails
+ */
+export async function createRequest(requestData: CreateRequestData): Promise<any | null> {
+  try {
+    const token = getJWTToken();
+    if (!token) {
+      console.error('❌ [API] No JWT token found. User must be authenticated.');
+      return null;
+    }
+
+    // Upload image if provided (only for maintenance requests)
+    // NEW WORKFLOW: Images are uploaded BEFORE request components are processed
+    let imageId = null;
+    let imageUrl = null;
+    
+    // Prefer imageId/imageUrl (new workflow) over image file (legacy)
+    if (requestData.imageId && requestData.imageUrl) {
+      imageId = requestData.imageId;
+      imageUrl = requestData.imageUrl;
+      if (DEBUG_MODE) {
+        console.log('✅ [API] Using pre-uploaded image:', { id: imageId, url: imageUrl });
+      }
+    } else if (requestData.image) {
+      // Legacy workflow: upload image now (for backward compatibility)
+      const uploadResult = await uploadImageToStrapi(requestData.image);
+      if (uploadResult) {
+        imageId = uploadResult.id;
+        imageUrl = uploadResult.url;
+      }
+      if (!imageId && DEBUG_MODE) {
+        console.warn('⚠️ [API] Image upload failed, but continuing with request creation');
+      }
+    }
+
+    // Prepare request payload
+    // Reference_Number is pulled from localStorage (bookingData.reference)
+    // Date is set to current time when request is made
+    // Type and details are set dynamically per component
+    const payload: any = {
+      data: {
+        type: requestData.type, // 'extending' | 'cleaning' | 'maintenance'
+        date: requestData.date, // ISO datetime string (current time)
+        Reference_Number: typeof requestData.Reference_Number === 'string' 
+          ? parseInt(requestData.Reference_Number) 
+          : requestData.Reference_Number, // From localStorage booking data
+      },
+    };
+
+    // Add optional fields
+    if (requestData.Phone_Number) {
+      payload.data.Phone_Number = requestData.Phone_Number;
+    }
+    if (requestData.details) {
+      payload.data.details = requestData.details;
+    }
+    if (imageId) {
+      payload.data.image = imageId;
+    }
+    // Store image URL for Arqam integration
+    if (imageUrl) {
+      payload.data.imageUrl = imageUrl;
+    }
+    
+    // Add Arqam CRM fields
+    if (requestData.requesttype) {
+      payload.data.requesttype = requestData.requesttype;
+    }
+    if (requestData.requestcategory) {
+      payload.data.requestcategory = requestData.requestcategory;
+    }
+    if (requestData.datechekout !== undefined) {
+      payload.data.datechekout = requestData.datechekout;
+    }
+    if (requestData.datechekin !== undefined) {
+      payload.data.datechekin = requestData.datechekin;
+    }
+    if (requestData.roomnumber) {
+      payload.data.roomnumber = requestData.roomnumber;
+    }
+    if (requestData.name) {
+      payload.data.name = requestData.name;
+    }
+    if (requestData.phone) {
+      payload.data.phone = requestData.phone;
+    }
+    if (requestData.note) {
+      payload.data.note = requestData.note;
+    }
+
+    const url = `${STRAPI_URL}${API_BASE_PATH}/requests`;
+    
+    if (DEBUG_MODE) {
+      console.log('🔍 [API] Creating request:', payload);
+    }
+    
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), API_TIMEOUT);
+    
+    const response = await fetch(url, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`,
+      },
+      body: JSON.stringify(payload),
+      signal: controller.signal
+    });
+
+    clearTimeout(timeoutId);
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      
+      if (response.status === 401) {
+        console.error('❌ [API] Unauthorized - JWT token invalid or expired');
+        console.error('❌ [API] Response:', errorText);
+        
+        // Don't clear bookingData as it contains the token
+        // Just log the error and return null so the flow can continue
+        // The WhatsApp message will still be sent
+        
+        if (DEBUG_MODE) {
+          console.warn('⚠️ [API] Request creation failed due to authentication, but continuing with WhatsApp flow');
+        }
+        
+        // Return null instead of throwing - allows WhatsApp flow to continue
+        return null;
+      }
+      
+      console.error('❌ [API] Error creating request:', response.status, errorText);
+      
+      // For other errors, also return null instead of throwing
+      // This allows the WhatsApp flow to continue even if database save fails
+      if (DEBUG_MODE) {
+        console.warn('⚠️ [API] Request creation failed, but continuing with WhatsApp flow');
+      }
+      
+      return null;
+    }
+
+    const data = await response.json();
+    
+    if (DEBUG_MODE) {
+      console.log('✅ [API] Request created:', data);
+    }
+    
+    return data.data || null;
+  } catch (error) {
+    if (error instanceof Error && error.name === 'AbortError') {
+      console.error('⏰ [API] Request timeout:', API_TIMEOUT + 'ms');
+      console.warn('⚠️ [API] Request creation timed out, but continuing with WhatsApp flow');
+      return null;
+    }
+    console.error('❌ [API] Error creating request:', error);
+    
+    // Return null instead of throwing - allows WhatsApp flow to continue
+    // The request will still be sent via WhatsApp even if database save fails
+    if (DEBUG_MODE) {
+      console.warn('⚠️ [API] Request creation failed due to error, but continuing with WhatsApp flow');
+    }
+    
+    return null;
+  }
+}
+
+/**
+ * Unit Lock data structure from n8n webhook
+ */
+export interface UnitLockData {
+  unit?: string; // Unit number like "B6/9", "A1", "R217"
+  development?: string; // Development name (if building password exists)
+  buildingPassword?: string; // Building password (optional)
+  apartmentPassword?: string; // Apartment password (required)
+}
+
+/**
+ * Fetch unit lock data from backend (triggers n8n webhook)
+ * @param reference - Booking reference number
+ * @returns Promise<UnitLockData | null> The unit lock data or null if not found
+ */
+export async function fetchUnitLockData(reference: string | number): Promise<UnitLockData | null> {
+  try {
+    const token = getJWTToken();
+    if (!token) {
+      console.error('❌ [API] No JWT token found. User must be authenticated.');
+      return null;
+    }
+
+    const url = `${STRAPI_URL}${API_BASE_PATH}/unit-lock`;
+    
+    if (DEBUG_MODE) {
+      console.log('🔍 [API] Fetching unit lock data for reference:', reference);
+      console.log('🔍 [API] URL:', url);
+    }
+    
+    // Create AbortController for timeout
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), API_TIMEOUT);
+    
+    const response = await fetch(url, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`,
+      },
+      body: JSON.stringify({ reference }),
+      signal: controller.signal
+    });
+
+    clearTimeout(timeoutId);
+
+    if (DEBUG_MODE) {
+      console.log('📡 [API] Unit lock response status:', response.status);
+    }
+
+    if (!response.ok) {
+      if (response.status === 401) {
+        console.error('❌ [API] Unauthorized - JWT token invalid or expired');
+        // Clear invalid token
+        if (typeof window !== 'undefined') {
+          localStorage.removeItem('jwtToken');
+          localStorage.removeItem('isAuthenticated');
+        }
+        throw new Error('Authentication failed. Please log in again.');
+      }
+      const errorText = await response.text();
+      console.error('❌ [API] Error response:', errorText);
+      throw new Error(`Failed to fetch unit lock data: ${response.status} - ${errorText}`);
+    }
+
+    const data = await response.json();
+    
+    if (DEBUG_MODE) {
+      console.log('✅ [API] Unit lock data received:', data);
+    }
+    
+    return data.data || null;
+  } catch (error) {
+    if (error instanceof Error && error.name === 'AbortError') {
+      console.error('⏰ [API] Request timeout:', API_TIMEOUT + 'ms');
+      throw new Error(`Request timeout after ${API_TIMEOUT}ms`);
+    }
+    console.error('❌ [API] Error fetching unit lock data:', error);
+    throw error;
+  }
 }

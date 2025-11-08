@@ -6,124 +6,8 @@ import LocaleLayout from '../../components/LocaleLayout';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { getBookingDataFromStorage, getRemainingDays } from '../../../lib/bookingUtils';
-import { fetchUnits, extractUnitNumber, Unit } from '@/lib/apiUtils';
-
-// Translation content
-const translations = {
-  en: {
-    title: "Cleaning Services",
-    subtitle: "Choose what works for you",
-    quickBooking: "Quick Booking",
-    services: "All Services",
-    popular: "Most Popular",
-    recommended: "Recommended for Your Unit",
-    
-    // Service Categories
-    regularCleaning: "Regular Cleaning",
-    deepCleaning: "Deep Cleaning",
-    monthlyPlan: "Monthly Plan",
-    linens: "Linens & Towels",
-    extras: "Extra Guest Services",
-    
-    // Service Details
-    basicCleaningTitle: "Quick Clean",
-    basicCleaningDesc: "Bathroom, floors, and trash removal",
-    
-    fullCleaningTitle: "Full Apartment Clean",
-    fullCleaningDesc: "Complete cleaning of your entire unit",
-    
-    monthlyTitle: "Monthly Package",
-    monthlyDesc: "4 visits per month • Save 20%",
-    
-    linensTitle: "Fresh Linens",
-    linensDesc: "Bed sheets, blankets & towels",
-    
-    guestTitle: "Guest Setup",
-    guestDesc: "Complete bedding set for additional guests",
-    
-    // Service Info
-    duration: "2 hours",
-    available: "Today, 3-8 PM",
-    fromPrice: "From",
-    perVisit: "/ visit",
-    perMonth: "/ month",
-    saveUp: "Save",
-    
-    // Steps
-    step1: "Service",
-    step2: "Time",
-    step3: "Confirm",
-    
-    // Time Selection
-    pickTime: "Pick a time",
-    todayOnly: "Available today",
-    workingHours: "3:00 PM - 8:00 PM",
-    lateNote: "Requests after 7 PM scheduled for next day",
-    
-    // Confirmation
-    reviewBooking: "Review your booking",
-    totalPrice: "Total",
-    confirmPay: "Request Service",
-    
-    // Unit Info
-    yourUnit: "Your Unit",
-    building: "Building",
-    stayDuration: "Stay"
-  },
-  ar: {
-    title: "خدمات التنظيف",
-    subtitle: "اختر ما يناسبك",
-    quickBooking: "حجز سريع",
-    services: "جميع الخدمات",
-    popular: "الأكثر طلباً",
-    recommended: "موصى به لوحدتك",
-    
-    regularCleaning: "تنظيف عادي",
-    deepCleaning: "تنظيف شامل",
-    monthlyPlan: "باقة شهرية",
-    linens: "مفارش ومناشف",
-    extras: "خدمات الضيوف",
-    
-    basicCleaningTitle: "تنظيف سريع",
-    basicCleaningDesc: "حمام، أرضيات، وإزالة القمامة",
-    
-    fullCleaningTitle: "تنظيف الشقة كاملة",
-    fullCleaningDesc: "تنظيف شامل لكامل الوحدة",
-    
-    monthlyTitle: "الباقة الشهرية",
-    monthlyDesc: "4 زيارات شهرياً • وفر 20%",
-    
-    linensTitle: "مفارش نظيفة",
-    linensDesc: "أغطية أسرّة، بطانيات ومناشف",
-    
-    guestTitle: "تجهيز ضيف",
-    guestDesc: "طقم فراش كامل للضيوف الإضافيين",
-    
-    duration: "ساعتان",
-    available: "اليوم، 3-8 مساءً",
-    fromPrice: "من",
-    perVisit: "/ زيارة",
-    perMonth: "/ شهر",
-    saveUp: "وفر",
-    
-    step1: "الخدمة",
-    step2: "الوقت",
-    step3: "تأكيد",
-    
-    pickTime: "اختر الوقت",
-    todayOnly: "متاح اليوم",
-    workingHours: "3:00 مساءً - 8:00 مساءً",
-    lateNote: "الطلبات بعد 7 مساءً تُجدول لليوم التالي",
-    
-    reviewBooking: "راجع حجزك",
-    totalPrice: "المجموع",
-    confirmPay: "طلب الخدمة",
-    
-    yourUnit: "وحدتك",
-    building: "المبنى",
-    stayDuration: "مدة الإقامة"
-  }
-};
+import { fetchUnits, extractUnitNumber, Unit, createRequest, CreateRequestData } from '@/lib/apiUtils';
+import { getMessages } from '@/messages';
 
 interface ServiceOption {
   id: string;
@@ -135,6 +19,7 @@ interface ServiceOption {
   category: 'cleaning' | 'monthly' | 'linens' | 'extras';
   popular?: boolean;
   unitTypes: string[];
+  arqaamCategory?: string; // Arqam CRM category in Arabic
 }
 
 export default function CleaningServices({ params }: { params: Promise<{ locale: string }> }) {
@@ -146,6 +31,7 @@ export default function CleaningServices({ params }: { params: Promise<{ locale:
   const [currentUnit, setCurrentUnit] = useState<Unit | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [currentStep, setCurrentStep] = useState<'service' | 'time' | 'confirmation'>('service');
+  const [showSuccessMessage, setShowSuccessMessage] = useState(false);
 
   useEffect(() => {
     params.then(({ locale: paramLocale }) => {
@@ -154,7 +40,7 @@ export default function CleaningServices({ params }: { params: Promise<{ locale:
   }, [params]);
 
   useEffect(() => {
-    if (!['en', 'ar'].includes(locale)) {
+    if (!['en', 'ar', 'es', 'zh'].includes(locale)) {
       router.push('/en');
       return;
     }
@@ -198,6 +84,8 @@ export default function CleaningServices({ params }: { params: Promise<{ locale:
     loadUnitData();
   }, []);
 
+  const t = getMessages(locale as 'en' | 'ar' | 'es' | 'zh');
+
   if (isLoading) {
     return (
       <LocaleLayout locale={locale}>
@@ -221,15 +109,13 @@ export default function CleaningServices({ params }: { params: Promise<{ locale:
               onClick={() => router.back()}
               className="bg-[#274754] hover:bg-[#94782C] text-white"
             >
-              Go Back
+              {t.goBack}
             </Button>
           </div>
         </div>
       </LocaleLayout>
     );
   }
-
-  const t = translations[locale as keyof typeof translations];
   
   const getUnitType = (bedroomCount: string) => {
     const count = parseInt(bedroomCount);
@@ -243,141 +129,154 @@ export default function CleaningServices({ params }: { params: Promise<{ locale:
   const remainingDays = getRemainingDays() || 0;
   const unitType = getUnitType(currentUnit.Number_of_bedrooms);
 
-  // Service configurations
+  // Service configurations with Arqam CRM categories
   const allServices: ServiceOption[] = [
     {
       id: 'basic-clean',
-      title: t.basicCleaningTitle,
-      description: t.basicCleaningDesc,
+      title: t.cleaning.basicCleaningTitle,
+      description: t.cleaning.basicCleaningDesc,
       icon: '🧹',
       price: 200,
       duration: '2h',
       category: 'cleaning',
-      unitTypes: ['studio', '1-bedroom', '2-bedroom', '3-bedroom']
+      unitTypes: ['studio', '1-bedroom', '2-bedroom', '3-bedroom'],
+      arqaamCategory: 'تنظيف ستوديو' // Default, will be mapped based on unit type
     },
     {
       id: 'studio-full',
-      title: t.fullCleaningTitle,
-      description: t.fullCleaningDesc,
+      title: t.cleaning.fullCleaningTitle,
+      description: t.cleaning.fullCleaningDesc,
       icon: '✨',
       price: 200,
       duration: '2h',
       category: 'cleaning',
       popular: true,
-      unitTypes: ['studio']
+      unitTypes: ['studio'],
+      arqaamCategory: 'تنظيف ستوديو'
     },
     {
       id: '1br-full',
-      title: t.fullCleaningTitle,
-      description: t.fullCleaningDesc,
+      title: t.cleaning.fullCleaningTitle,
+      description: t.cleaning.fullCleaningDesc,
       icon: '✨',
       price: 260,
       duration: '2h',
       category: 'cleaning',
       popular: true,
-      unitTypes: ['1-bedroom']
+      unitTypes: ['1-bedroom'],
+      arqaamCategory: 'تنظيف شقة 1 غرفة'
     },
     {
       id: '2br-full',
-      title: t.fullCleaningTitle,
-      description: t.fullCleaningDesc,
+      title: t.cleaning.fullCleaningTitle,
+      description: t.cleaning.fullCleaningDesc,
       icon: '✨',
       price: 365,
       duration: '2h',
       category: 'cleaning',
       popular: true,
-      unitTypes: ['2-bedroom']
+      unitTypes: ['2-bedroom'],
+      arqaamCategory: 'تنظيف شقة 2 غرفة'
     },
     {
       id: '3br-full',
-      title: t.fullCleaningTitle,
-      description: t.fullCleaningDesc,
+      title: t.cleaning.fullCleaningTitle,
+      description: t.cleaning.fullCleaningDesc,
       icon: '✨',
       price: 380,
       duration: '2h',
       category: 'cleaning',
       popular: true,
-      unitTypes: ['3-bedroom']
+      unitTypes: ['3-bedroom'],
+      arqaamCategory: 'تنظيف شقة 3 غرف'
     },
     {
       id: 'monthly-studio',
-      title: t.monthlyTitle,
-      description: t.monthlyDesc,
+      title: t.cleaning.monthlyTitle,
+      description: t.cleaning.monthlyDesc,
       icon: '📅',
       price: 780,
       duration: '4 visits',
       category: 'monthly',
-      unitTypes: ['studio']
+      unitTypes: ['studio'],
+      arqaamCategory: 'باقة تنظيف شقة 2 غرفة أو 1 غرفة شهري (4 زيارات بالشهر)'
     },
     {
       id: 'monthly-1br',
-      title: t.monthlyTitle,
-      description: t.monthlyDesc,
+      title: t.cleaning.monthlyTitle,
+      description: t.cleaning.monthlyDesc,
       icon: '📅',
       price: 1020,
       duration: '4 visits',
       category: 'monthly',
-      unitTypes: ['1-bedroom']
+      unitTypes: ['1-bedroom'],
+      arqaamCategory: 'باقة تنظيف شقة 2 غرفة أو 1 غرفة شهري (4 زيارات بالشهر)'
     },
     {
       id: 'monthly-2br',
-      title: t.monthlyTitle,
-      description: t.monthlyDesc,
+      title: t.cleaning.monthlyTitle,
+      description: t.cleaning.monthlyDesc,
       icon: '📅',
       price: 1440,
       duration: '4 visits',
       category: 'monthly',
-      unitTypes: ['2-bedroom']
+      unitTypes: ['2-bedroom'],
+      arqaamCategory: 'باقة تنظيف شقة 2 غرفة أو 1 غرفة شهري (4 زيارات بالشهر)'
     },
     {
       id: 'monthly-3br',
-      title: t.monthlyTitle,
-      description: t.monthlyDesc,
+      title: t.cleaning.monthlyTitle,
+      description: t.cleaning.monthlyDesc,
       icon: '📅',
       price: 1500,
       duration: '4 visits',
       category: 'monthly',
-      unitTypes: ['3-bedroom']
+      unitTypes: ['3-bedroom'],
+      arqaamCategory: 'باقة تنظيف شقة 3 غرفة شهري (4 زيارات بالشهر)'
     },
     {
       id: 'linens-master',
-      title: t.linensTitle + ' - Master',
+      title: t.cleaning.linensTitle + ' - Master',
       description: '1 master bed + 2 small + 2 large towels',
       icon: '🛏️',
       price: 131,
       duration: '1h',
       category: 'linens',
-      unitTypes: ['studio', '1-bedroom', '2-bedroom', '3-bedroom']
+      unitTypes: ['studio', '1-bedroom', '2-bedroom', '3-bedroom'],
+      arqaamCategory: '1 سرير ماستر+ مناشف (2 صغيرة + 2 كبيرة)'
     },
     {
       id: 'linens-master-2single',
-      title: t.linensTitle + ' - Large',
+      title: t.cleaning.linensTitle + ' - Large',
       description: '1 master + 2 single beds + 4 small + 4 large towels',
       icon: '🛏️',
       price: 245,
       duration: '1h',
       category: 'linens',
-      unitTypes: ['1-bedroom', '2-bedroom', '3-bedroom']
+      unitTypes: ['1-bedroom', '2-bedroom', '3-bedroom'],
+      arqaamCategory: '1 سرير ماستر + 2 سرير مفرد + مناشف (4 صغيرة + 4 كبيرة)'
     },
     {
       id: 'linens-master-4single',
-      title: t.linensTitle + ' - XL',
+      title: t.cleaning.linensTitle + ' - XL',
       description: '1 master + 4 single beds + 6 small + 6 large towels',
       icon: '🛏️',
       price: 359,
       duration: '1h',
       category: 'linens',
-      unitTypes: ['2-bedroom', '3-bedroom']
+      unitTypes: ['2-bedroom', '3-bedroom'],
+      arqaamCategory: '1 سرير ماستر + 4 سرير مفرد + مناشف (6 صغيرة + 6 كبيرة)'
     },
     {
       id: 'guest-package',
-      title: t.guestTitle,
-      description: t.guestDesc,
+      title: t.cleaning.guestTitle,
+      description: t.cleaning.guestDesc,
       icon: '👥',
       price: 85,
       duration: '30min',
       category: 'extras',
-      unitTypes: ['studio', '1-bedroom', '2-bedroom', '3-bedroom']
+      unitTypes: ['studio', '1-bedroom', '2-bedroom', '3-bedroom'],
+      arqaamCategory: 'باقة ضيف آخر (غطاء سرير + بطانية+ مخدة+ منشفة صغيرة + منشفة كبيرة + سليبر)'
     }
   ];
 
@@ -386,22 +285,19 @@ export default function CleaningServices({ params }: { params: Promise<{ locale:
   );
 
   const getAvailableTimeSlots = () => {
-    const now = new Date();
-    const currentHour = now.getHours();
-    const currentMinute = now.getMinutes();
-    const currentTime = currentHour * 60 + currentMinute;
-    
+    // Always show all time slots from 3:00 PM to 8:00 PM
     const slots = [];
     for (let hour = 15; hour < 20; hour++) {
       const timeSlot = `${hour.toString().padStart(2, '0')}:00`;
-      const slotTime = hour * 60;
-      
-      if (slotTime > currentTime) {
-        slots.push(timeSlot);
-      }
+      slots.push(timeSlot);
     }
-    
     return slots;
+  };
+
+  const shouldShowLateNotification = () => {
+    const now = new Date();
+    const currentHour = now.getHours();
+    return currentHour >= 19; // 7 PM or later
   };
 
   const handleServiceSelect = (serviceId: string) => {
@@ -414,30 +310,107 @@ export default function CleaningServices({ params }: { params: Promise<{ locale:
     setCurrentStep('confirmation');
   };
 
-  const handleConfirm = () => {
+  const handleCancel = () => {
+    setSelectedService(null);
+    setSelectedTime(null);
+    setCurrentStep('service');
+    router.back();
+  };
+
+  const handleConfirm = async () => {
     if (!selectedService || !selectedTime) return;
     
     const service = availableServices.find(s => s.id === selectedService);
     if (!service) return;
     
-    // Create WhatsApp message
+    // Get booking data from localStorage
     const bookingData = getBookingDataFromStorage();
-    const message = `Hello! I would like to request a cleaning service:\n\n` +
-      `📋 Service: ${service.title}\n` +
-      `🏠 Unit: ${currentUnit.Reference}\n` +
-      `🛏️ Unit Type: ${currentUnit.Number_of_bedrooms} bedroom\n` +
-      `🏢 Building: ${currentUnit.Development}\n` +
-      `⏰ Preferred Time: ${selectedTime}\n` +
-      `💰 Price: ${service.price} SAR\n\n` +
-      `Guest Name: ${bookingData?.guestName || 'N/A'}\n` +
-      `Email: ${bookingData?.email || 'N/A'}\n` +
-      `Phone: ${bookingData?.phone || 'N/A'}`;
+    if (!bookingData || !bookingData.reference) {
+      console.error('Missing booking data or reference number');
+      return;
+    }
+
+    // Determine Arqam category based on service and unit type
+    let arqaamCategory = service.arqaamCategory || '';
     
-    const whatsappNumber = '966500000000'; // Replace with actual customer service number
-    const encodedMessage = encodeURIComponent(message);
-    const whatsappUrl = `https://wa.me/${whatsappNumber}?text=${encodedMessage}`;
-    
-    window.open(whatsappUrl, '_blank');
+    // Map cleaning services to Arqam categories based on unit type
+    if (service.category === 'cleaning' && !arqaamCategory) {
+      const bedroomCount = parseInt(currentUnit.Number_of_bedrooms);
+      if (bedroomCount === 0) {
+        arqaamCategory = 'تنظيف ستوديو';
+      } else if (bedroomCount === 1) {
+        arqaamCategory = 'تنظيف شقة 1 غرفة';
+      } else if (bedroomCount === 2) {
+        arqaamCategory = 'تنظيف شقة 2 غرفة';
+      } else if (bedroomCount >= 3) {
+        arqaamCategory = 'تنظيف شقة 3 غرف';
+      }
+    }
+
+    // Extract room number from accommodation
+    const roomNumber = currentUnit.Reference || bookingData.accommodation?.match(/R\d+/)?.[0] || '';
+
+    // Format dates from bookingData for Arqam CRM (YYYY-MM-DD format)
+    const formatDateForArqaam = (dateString: string) => {
+      if (!dateString) return 'null';
+      const date = new Date(dateString);
+      if (isNaN(date.getTime())) return 'null';
+      const year = date.getFullYear();
+      const month = String(date.getMonth() + 1).padStart(2, '0');
+      const day = String(date.getDate()).padStart(2, '0');
+      return `${year}-${month}-${day}`;
+    };
+
+    const datechekin = formatDateForArqaam(bookingData.arrival);
+    const datechekout = formatDateForArqaam(bookingData.departure);
+
+    // Prepare dynamic details for the cleaning service request
+    const details = `Service: ${service.title}\n` +
+      `Unit: ${currentUnit.Reference}\n` +
+      `Unit Type: ${currentUnit.Number_of_bedrooms} bedroom\n` +
+      `Building: ${currentUnit.Development}\n` +
+      `Preferred Time: ${selectedTime}\n` +
+      `Price: ${service.price} SAR`;
+
+    // Create request in database via backend API with Arqam CRM fields
+    // Type: 'cleaning', Date: current time, Details: dynamic, Reference_Number: from localStorage
+    try {
+      const requestPayload: CreateRequestData = {
+        type: 'cleaning' as const,
+        date: new Date().toISOString(), // Current time when request is made
+        details: details, // Dynamic details based on selected service and time
+        Reference_Number: bookingData.reference, // From localStorage booking data
+        // Arqam CRM fields for cleaning requests
+        requesttype: 'نظافة',
+        requestcategory: arqaamCategory,
+        datechekin: datechekin,
+        datechekout: datechekout,
+        roomnumber: roomNumber,
+        note: `Preferred Time: ${selectedTime}\n${details}`,
+      };
+      
+      console.log('📤 Creating cleaning request with payload:', JSON.stringify(requestPayload, null, 2));
+      
+      const result = await createRequest(requestPayload);
+      if (result) {
+        console.log('✅ Cleaning request saved to database and sent to Arqam CRM successfully');
+        // Show success message and reset form
+        setShowSuccessMessage(true);
+        setTimeout(() => {
+          setShowSuccessMessage(false);
+          setSelectedService(null);
+          setSelectedTime(null);
+          setCurrentStep('service');
+          router.push(`/${locale}`);
+        }, 3000);
+      } else {
+        console.warn('⚠️ Cleaning request save failed');
+        alert(locale === 'ar' ? 'فشل إرسال الطلب. يرجى المحاولة مرة أخرى.' : 'Failed to submit request. Please try again.');
+      }
+    } catch (requestError) {
+      console.error('❌ Error saving cleaning request to database:', requestError);
+      alert(locale === 'ar' ? 'حدث خطأ أثناء إرسال الطلب. يرجى المحاولة مرة أخرى.' : 'An error occurred while submitting the request. Please try again.');
+    }
   };
 
   const selectedServiceData = availableServices.find(s => s.id === selectedService);
@@ -445,6 +418,29 @@ export default function CleaningServices({ params }: { params: Promise<{ locale:
   return (
     <LocaleLayout locale={locale}>
       <div className="min-h-screen bg-[#FAF6F5]">
+        {/* Success Message */}
+        {showSuccessMessage && (
+          <div className="fixed top-4 left-4 right-4 z-50 animate-in slide-in-from-top-2 duration-300">
+            <div className="bg-green-50 border border-green-200 rounded-lg p-4 shadow-lg">
+              <div className="flex items-center">
+                <svg className="h-5 w-5 text-green-600 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+                <div>
+                  <h3 className="text-sm font-medium text-green-800">
+                    {locale === 'ar' ? 'تم إرسال الطلب بنجاح!' : 'Request Submitted Successfully!'}
+                  </h3>
+                  <p className="text-sm text-green-700 mt-1">
+                    {locale === 'ar' 
+                      ? 'تم إرسال طلب التنظيف. سيتم الرد عليك قريباً.'
+                      : 'Your cleaning request has been sent. You will be contacted soon.'}
+                  </p>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+        
         {/* Header */}
         <div className="bg-white sticky top-0 z-10 shadow-sm">
           <div className="px-4 py-4">
@@ -458,14 +454,20 @@ export default function CleaningServices({ params }: { params: Promise<{ locale:
                 </svg>
               </button>
               <div className="flex-1">
-                <h1 className="text-xl font-bold text-[#274754]">{t.title}</h1>
-                <p className="text-sm text-[#94782C]">{t.subtitle}</p>
+                <h1 className="text-xl font-bold text-[#274754]">{t.cleaning.title}</h1>
+                <p className="text-sm text-[#94782C]">{t.cleaning.subtitle}</p>
               </div>
+              <button
+                onClick={handleCancel}
+                className="px-4 py-2 text-sm font-medium text-[#274754] hover:text-[#94782C] transition-colors"
+              >
+                {t.cleaning.cancel}
+              </button>
             </div>
             
             {/* Progress Steps */}
             <div className="flex items-center justify-between px-4">
-              {[t.step1, t.step2, t.step3].map((step, index) => (
+              {[t.cleaning.step1, t.cleaning.step2, t.cleaning.step3].map((step, index) => (
                 <div key={index} className="flex items-center">
                   <div className={`flex flex-col items-center ${index <= ['service', 'time', 'confirmation'].indexOf(currentStep) ? 'opacity-100' : 'opacity-30'}`}>
                     <div className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold ${
@@ -492,22 +494,22 @@ export default function CleaningServices({ params }: { params: Promise<{ locale:
         {currentStep === 'service' && (
           <div className="pb-6">
             {/* Unit Info Card */}
-            <div className="px-4 pt-4 pb-2">
+            {/* <div className="px-4 pt-4 pb-2">
               <div className="bg-white border border-[#EDEBED] rounded-2xl p-4 shadow-sm">
                 <div className="flex items-center justify-between">
                   <div>
-                    <p className="text-xs text-[#94782C] mb-1">{t.yourUnit}</p>
+                    <p className="text-xs text-[#94782C] mb-1">{t.cleaning.yourUnit}</p>
                     <p className="text-lg font-bold text-[#274754]">{currentUnit.Reference}</p>
                     <p className="text-sm text-[#94782C]">{currentUnit.Number_of_bedrooms} bedroom • {remainingDays} days</p>
                   </div>
                   <div className="text-4xl">🏠</div>
                 </div>
               </div>
-            </div>
+            </div> */}
 
             {/* Quick Actions */}
             <div className="px-4 pt-4">
-              <h2 className="text-base font-bold text-[#274754] mb-3">{t.recommended}</h2>
+              <h2 className="text-base font-bold text-[#274754] mb-3">{t.cleaning.recommended}</h2>
               <div className="space-y-3">
                 {availableServices
                   .filter(s => s.popular || s.category === 'cleaning')
@@ -523,11 +525,11 @@ export default function CleaningServices({ params }: { params: Promise<{ locale:
                         <div className="flex-1 text-left">
                           <div className="flex items-center gap-2 mb-1">
                             <h3 className="font-bold text-[#274754]">{service.title}</h3>
-                            {service.popular && (
+                            {/* {service.popular && (
                               <span className="bg-[#CDB990] text-white text-xs px-2 py-0.5 rounded-full font-medium">
-                                {t.popular}
+                                {t.cleaning.popular}
                               </span>
-                            )}
+                            )} */}
                           </div>
                           <p className="text-xs text-[#94782C] mb-2">{service.description}</p>
                           <div className="flex items-center gap-3 text-xs text-[#274754]">
@@ -538,7 +540,7 @@ export default function CleaningServices({ params }: { params: Promise<{ locale:
                               {service.duration}
                             </span>
                             <span className="text-[#94782C]">•</span>
-                            <span>{t.todayOnly}</span>
+                            <span>{t.cleaning.todayOnly}</span>
                           </div>
                         </div>
                         <div className="text-right ml-4">
@@ -554,7 +556,7 @@ export default function CleaningServices({ params }: { params: Promise<{ locale:
             {/* Monthly Package */}
             {availableServices.some(s => s.category === 'monthly') && (
               <div className="px-4 pt-6">
-                <h2 className="text-base font-bold text-[#274754] mb-3">{t.monthlyPlan}</h2>
+                <h2 className="text-base font-bold text-[#274754] mb-3">{t.cleaning.monthlyPlan}</h2>
                 {availableServices
                   .filter(s => s.category === 'monthly')
                   .map((service) => (
@@ -568,13 +570,13 @@ export default function CleaningServices({ params }: { params: Promise<{ locale:
                         <div className="flex-1 text-left">
                           <h3 className="font-bold text-[#274754] mb-1">{service.title}</h3>
                           <p className="text-xs text-[#94782C] mb-2">{service.description}</p>
-                          <div className="inline-block bg-[#CDB990] text-white text-xs px-2 py-1 rounded-full">
-                            {t.saveUp} 20%
-                          </div>
+                          {/* <div className="inline-block bg-[#CDB990] text-white text-xs px-2 py-1 rounded-full">
+                            {t.cleaning.saveUp} 20%
+                          </div> */}
                         </div>
                         <div className="text-right ml-4">
                           <p className="text-2xl font-bold text-[#274754]">{service.price}</p>
-                          <p className="text-xs text-[#94782C]">SAR{t.perMonth}</p>
+                          <p className="text-xs text-[#94782C]">SAR{t.cleaning.perMonth}</p>
                         </div>
                       </div>
                     </button>
@@ -584,7 +586,7 @@ export default function CleaningServices({ params }: { params: Promise<{ locale:
 
             {/* Linens & Extras */}
             <div className="px-4 pt-6">
-              <h2 className="text-base font-bold text-[#274754] mb-3">{t.linens} & {t.extras}</h2>
+              <h2 className="text-base font-bold text-[#274754] mb-3">{t.cleaning.linens} & {t.cleaning.extras}</h2>
               <div className="grid grid-cols-2 gap-3">
                 {availableServices
                   .filter(s => s.category === 'linens' || s.category === 'extras')
@@ -619,8 +621,8 @@ export default function CleaningServices({ params }: { params: Promise<{ locale:
               </div>
             </div>
 
-            <h2 className="text-lg font-bold text-[#274754] mb-2">{t.pickTime}</h2>
-            <p className="text-sm text-[#94782C] mb-4">{t.workingHours}</p>
+            <h2 className="text-lg font-bold text-[#274754] mb-2">{t.cleaning.pickTime}</h2>
+            <p className="text-sm text-[#94782C] mb-4">{t.cleaning.workingHours}</p>
 
             <div className="grid grid-cols-3 gap-3 mb-4">
               {getAvailableTimeSlots().map((time) => (
@@ -638,19 +640,21 @@ export default function CleaningServices({ params }: { params: Promise<{ locale:
               ))}
             </div>
 
-            <div className="bg-[#FAF6F5] rounded-xl p-3 text-sm text-[#274754] border border-[#EDEBED]">
-              <p className="flex items-start gap-2">
-                <span className="text-lg">⏰</span>
-                <span>{t.lateNote}</span>
-              </p>
-            </div>
+            {shouldShowLateNotification() && (
+              <div className="bg-[#FAF6F5] rounded-xl p-3 text-sm text-[#274754] border border-[#EDEBED]">
+                <p className="flex items-start gap-2">
+                  <span className="text-lg">⏰</span>
+                  <span>{t.cleaning.lateNote}</span>
+                </p>
+              </div>
+            )}
           </div>
         )}
 
         {/* Confirmation */}
         {currentStep === 'confirmation' && selectedServiceData && selectedTime && (
           <div className="px-4 py-6">
-            <h2 className="text-lg font-bold text-[#274754] mb-4">{t.reviewBooking}</h2>
+            <h2 className="text-lg font-bold text-[#274754] mb-4">{t.cleaning.reviewBooking}</h2>
 
             <div className="bg-white rounded-2xl p-4 mb-4 shadow-sm">
               <div className="flex items-center mb-4 pb-4 border-b border-[#EDEBED]">
@@ -663,7 +667,7 @@ export default function CleaningServices({ params }: { params: Promise<{ locale:
 
               <div className="space-y-3 text-sm">
                 <div className="flex justify-between">
-                  <span className="text-[#94782C]">{t.yourUnit}</span>
+                  <span className="text-[#94782C]">{t.cleaning.yourUnit}</span>
                   <span className="font-medium text-[#274754]">{currentUnit.Reference}</span>
                 </div>
                 <div className="flex justify-between">
@@ -677,7 +681,7 @@ export default function CleaningServices({ params }: { params: Promise<{ locale:
               </div>
 
               <div className="mt-4 pt-4 border-t border-[#EDEBED] flex justify-between items-center">
-                <span className="font-bold text-[#274754]">{t.totalPrice}</span>
+                <span className="font-bold text-[#274754]">{t.cleaning.totalPrice}</span>
                 <span className="text-2xl font-bold text-[#274754]">{selectedServiceData.price} <span className="text-base">SAR</span></span>
               </div>
             </div>
@@ -686,7 +690,7 @@ export default function CleaningServices({ params }: { params: Promise<{ locale:
               onClick={handleConfirm}
               className="w-full bg-[#274754] hover:bg-[#94782C] text-white font-bold py-4 rounded-2xl shadow-lg active:scale-95 transition-all"
             >
-              {t.confirmPay}
+              {t.cleaning.confirmPay}
             </button>
           </div>
         )}

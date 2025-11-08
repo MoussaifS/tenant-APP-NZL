@@ -1,5 +1,3 @@
-'use client';
-
 import LanguageSwitcher from '../../components/LanguageSwitcher';
 import { useAuth } from '../../components/AuthProvider';
 import { Button } from '../../../components/ui/button';
@@ -14,7 +12,7 @@ export default function WelcomeHeader({ locale }: WelcomeHeaderProps) {
   const isRTL = locale === 'ar';
   
   // Get translations from messages files
-  const t = getMessages(locale as 'en' | 'ar');
+  const t = getMessages(locale as 'en' | 'ar' | 'es' | 'zh');
   
   // Font style based on locale
   const welcomeFontFamily = isRTL 
@@ -38,11 +36,6 @@ export default function WelcomeHeader({ locale }: WelcomeHeaderProps) {
           </Button> */}
           <LanguageSwitcher />
         </div>
-
-        {/* Language Switcher */}
-        {/* <div className={`absolute top-6 ${isRTL ? 'right-6 sm:right-8' : 'left-6 sm:left-8'}`}>
-          <LanguageSwitcher />
-        </div> */}
         {/* Main Content */}
         <div className="max-w-4xl mx-auto">
           <h1 

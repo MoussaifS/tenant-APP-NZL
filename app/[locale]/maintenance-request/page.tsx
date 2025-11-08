@@ -1,142 +1,135 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
+import { getMessages } from '@/messages';
 
 interface MaintenanceFormData {
   topic: string;
+  category: string; // Arqam CRM category
   mobileNumber: string;
   message: string;
-  image: File | null;
+  brokenItemsCount?: number; // Required for some categories
 }
 
 interface MaintenanceFormErrors {
   topic?: string;
+  category?: string;
   mobileNumber?: string;
   message?: string;
-  image?: string;
+  brokenItemsCount?: string;
 }
 
 export default function MaintenanceRequest({ params }: { params: Promise<{ locale: string }> }) {
   const router = useRouter();
-  const [locale, setLocale] = useState('en');
+  // Get locale from URL immediately to avoid hydration mismatch
+  const [locale, setLocale] = useState(() => {
+    if (typeof window !== 'undefined') {
+      const pathSegments = window.location.pathname.split('/').filter(Boolean);
+      const urlLocale = pathSegments[0];
+      if (['en', 'ar', 'es', 'zh'].includes(urlLocale)) {
+        return urlLocale;
+      }
+    }
+    return 'en';
+  });
+
   const [formData, setFormData] = useState<MaintenanceFormData>({
     topic: '',
+    category: '',
     mobileNumber: '',
     message: '',
-    image: null
+    brokenItemsCount: undefined
   });
   const [errors, setErrors] = useState<MaintenanceFormErrors>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  // Translations
-  const translations = {
-    en: {
-      title: "Maintenance Request",
-      topic: "Topic",
-      mobileNumber: "Mobile Number",
-      message: "Message",
-      attachPhoto: "Attach Photo",
-      takePhoto: "Take Photo",
-      uploadPhoto: "Upload Photo",
-      scheduleMessage: "Please upload the picture once you are in WhatsApp with our support team",
-      send: "Send",
-      required: "This field is required",
-      invalidMobile: "Please enter a valid mobile number",
-      photoRequired: "Please attach a photo",
-      back: "Back"
-    },
-    ar: {
-      title: "طلب الصيانة",
-      topic: "الموضوع",
-      mobileNumber: "رقم الجوال",
-      message: "الرسالة",
-      attachPhoto: "إرفاق صورة",
-      takePhoto: "التقاط صورة",
-      uploadPhoto: "رفع صورة",
-      scheduleMessage: "يمكنك جدولة الصيانة مع فريق الدعم لدينا",
-      send: "إرسال",
-      required: "هذا الحقل مطلوب",
-      invalidMobile: "يرجى إدخال رقم جوال صحيح",
-      photoRequired: "يرجى إرفاق صورة",
-      back: "رجوع"
-    }
-  };
-
-  const t = translations[locale as keyof typeof translations];
-
-  // Initialize locale
-  useState(() => {
+  // Initialize locale from params
+  useEffect(() => {
     params.then(({ locale: paramLocale }) => {
       setLocale(paramLocale || 'en');
     });
-  });
+  }, [params]);
+
+  // Get translations
+  const all = getMessages(locale as 'en' | 'ar' | 'es' | 'zh');
+  const t = {
+    title: all.mc_title || 'Maintenance Request',
+    topic: all.mc_topic || 'Topic',
+    mobileNumber: all.mc_mobileNumber || 'Mobile Number',
+    message: all.mc_message || 'Message',
+    scheduleMessage: locale === 'ar' ? 'يمكنك جدولة الصيانة مع فريق الدعم لدينا' : locale === 'es' ? 'Puedes programar el mantenimiento con nuestro equipo de soporte' : locale === 'zh' ? '您可以通过我们的支持团队安排维护' : 'Please contact our support team via WhatsApp',
+    send: locale === 'ar' ? 'إرسال' : locale === 'es' ? 'Enviar' : locale === 'zh' ? '发送' : 'Send',
+    required: locale === 'ar' ? 'هذا الحقل مطلوب' : locale === 'es' ? 'Este campo es obligatorio' : locale === 'zh' ? '此字段为必填项' : 'This field is required',
+    invalidMobile: locale === 'ar' ? 'يرجى إدخال رقم جوال صحيح' : locale === 'es' ? 'Por favor ingrese un número de móvil válido' : locale === 'zh' ? '请输入有效的手机号码' : 'Please enter a valid mobile number',
+    back: all.mc_back || 'Back',
+    maintenanceCategories: (all.maintenanceCategories || {}) as Record<string, string>
+  };
+
+  // Arqam CRM maintenance categories - values are Arabic for backend, labels use translations
+  const maintenanceCategories = [
+    { value: 'انقطاع مياه', requiresCount: false },
+    { value: 'انقطاع كهرباء', requiresCount: false },
+    { value: 'مشاكل تكييف', requiresCount: true },
+    { value: 'تسريب', requiresCount: true },
+    { value: 'استبدال شطّاف', requiresCount: true },
+    { value: 'نجارة : رف او باب', requiresCount: true },
+    { value: 'أخرى', requiresCount: true },
+    { value: 'انقطاع الانترنت', requiresCount: false },
+    { value: 'السخان', requiresCount: false },
+    { value: 'أعطال الباب', requiresCount: false },
+    { value: 'مشكلة مغسلة يد', requiresCount: false },
+    { value: 'مشكلة الدش أو سماعة الشاور', requiresCount: false },
+    { value: 'مشكلة تسريب سخان', requiresCount: false },
+    { value: 'مشكلة في أحد اكسسوارات دورة المياه', requiresCount: false },
+    { value: 'اهتزاز أو اتجاج مغسلة الملابس', requiresCount: false },
+    { value: 'عطل عام في مغسلة الملابس', requiresCount: false },
+    { value: 'انتهاء أو نفاذ الغاز', requiresCount: false },
+    { value: 'مشكلة بالفرن أو عطل', requiresCount: false },
+    { value: 'عطل انارة أو فيش', requiresCount: false },
+    { value: 'مشكلة أدراج ودواليب أو طاولة أو كنب أو كراسي', requiresCount: false },
+  ].map(cat => ({
+    ...cat,
+    label: t.maintenanceCategories[cat.value] || cat.value // Use translated label or fallback to Arabic value
+  }));
+
+  const selectedCategory = maintenanceCategories.find(cat => cat.value === formData.category);
+  const requiresCount = selectedCategory?.requiresCount || false;
 
   const validateForm = (): boolean => {
     const newErrors: MaintenanceFormErrors = {};
 
-    if (!formData.topic.trim()) {
-      newErrors.topic = t.required;
+    if (!formData.category) {
+      newErrors.category = t.required;
     }
 
-    // Commented out - will be used later
-    // if (!formData.mobileNumber.trim()) {
-    //   newErrors.mobileNumber = t.required;
-    // } else if (!/^[\d\s\-\+\(\)]+$/.test(formData.mobileNumber)) {
-    //   newErrors.mobileNumber = t.invalidMobile;
-    // }
+    if (!formData.mobileNumber.trim()) {
+      newErrors.mobileNumber = t.required;
+    } else if (!/^[\d\s\-\+\(\)]+$/.test(formData.mobileNumber)) {
+      newErrors.mobileNumber = t.invalidMobile;
+    }
 
     if (!formData.message.trim()) {
       newErrors.message = t.required;
     }
 
-    // Commented out - will be used later
-    // if (!formData.image) {
-    //   newErrors.image = t.photoRequired;
-    // }
+    if (requiresCount && (!formData.brokenItemsCount || formData.brokenItemsCount < 1)) {
+      newErrors.brokenItemsCount = t.required;
+    }
 
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
 
-  const handleInputChange = (field: keyof MaintenanceFormData, value: string) => {
+  const handleInputChange = (field: keyof MaintenanceFormData, value: string | number) => {
     setFormData(prev => ({ ...prev, [field]: value }));
     // Clear error when user starts typing
-    if (errors[field]) {
-      setErrors(prev => ({ ...prev, [field]: undefined }));
+    if (errors[field as keyof MaintenanceFormErrors]) {
+      setErrors(prev => ({ ...prev, [field as keyof MaintenanceFormErrors]: undefined }));
     }
-  };
-
-  const handleImageUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0];
-    if (file) {
-      setFormData(prev => ({ ...prev, image: file }));
-      // Clear error when user selects an image
-      if (errors.image) {
-        setErrors(prev => ({ ...prev, image: undefined }));
-      }
-    }
-  };
-
-  const handleTakePhoto = () => {
-    const input = document.createElement('input');
-    input.type = 'file';
-    input.accept = 'image/*';
-    input.capture = 'environment'; // Use back camera on mobile
-    input.onchange = (e) => {
-      const file = (e.target as HTMLInputElement).files?.[0];
-      if (file) {
-        setFormData(prev => ({ ...prev, image: file }));
-        // Clear error when user selects an image
-        if (errors.image) {
-          setErrors(prev => ({ ...prev, image: undefined }));
-        }
-      }
-    };
-    input.click();
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -151,13 +144,14 @@ export default function MaintenanceRequest({ params }: { params: Promise<{ local
     // Store form data in sessionStorage for confirmation page
     const formDataToStore = {
       ...formData,
-      imagePreview: formData.image ? URL.createObjectURL(formData.image) : null
+      topic: formData.category, // Use category as topic for Arqam CRM
     };
     
     sessionStorage.setItem('maintenanceRequest', JSON.stringify(formDataToStore));
     
     // Navigate to confirmation page
     router.push(`/${locale}/maintenance-confirmation`);
+    setIsSubmitting(false);
   };
 
   const isRTL = locale === 'ar';
@@ -191,32 +185,60 @@ export default function MaintenanceRequest({ params }: { params: Promise<{ local
 
 
       <div className="px-4 py-6">
-        <Card className="border border-[#EDEBED] bg-white shadow-sm">
+        <Card className="border border-[#EDEBED] bg-white shadow-sm" dir={isRTL ? 'rtl' : 'ltr'}>
           <CardHeader className="bg-[#CDB990] bg-opacity-10 border-b border-[#EDEBED]">
-            <CardTitle className="text-center text-[#274754] font-bold">{t.title}</CardTitle>
+            <CardTitle className="text-center text-[#274754] font-bold" dir={isRTL ? 'rtl' : 'ltr'}>{t.title}</CardTitle>
           </CardHeader>
           <CardContent>
             <form onSubmit={handleSubmit} className="space-y-6">
-              {/* Topic Field */}
+              {/* Category Field */}
               <div>
                 <label className="block text-sm font-bold text-[#274754] mb-2">
                   {t.topic} *
                 </label>
-                <Input
-                  type="text"
-                  value={formData.topic}
-                  onChange={(e) => handleInputChange('topic', e.target.value)}
-                  placeholder={t.topic}
-                  className={errors.topic ? 'border-red-500' : ''}
+                <select
+                  value={formData.category}
+                  onChange={(e) => handleInputChange('category', e.target.value)}
+                  className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-[#274754] ${
+                    errors.category ? 'border-red-500' : 'border-[#EDEBED]'
+                  }`}
                   dir={isRTL ? 'rtl' : 'ltr'}
-                />
-                {errors.topic && (
-                  <p className="text-red-500 text-xs mt-1">{errors.topic}</p>
+                >
+                  <option value="">{t.topic}</option>
+                  {maintenanceCategories.map((cat) => (
+                    <option key={cat.value} value={cat.value}>
+                      {cat.label}
+                    </option>
+                  ))}
+                </select>
+                {errors.category && (
+                  <p className="text-red-500 text-xs mt-1">{errors.category}</p>
                 )}
               </div>
 
+              {/* Broken Items Count - Show only if required */}
+              {requiresCount && (
+                <div>
+                  <label className="block text-sm font-bold text-[#274754] mb-2">
+                    {isRTL ? 'عدد الأشياء المتعطلة' : 'Number of Broken Items'} *
+                  </label>
+                  <Input
+                    type="number"
+                    min="1"
+                    value={formData.brokenItemsCount || ''}
+                    onChange={(e) => handleInputChange('brokenItemsCount', parseInt(e.target.value) || 0)}
+                    placeholder={isRTL ? 'أدخل العدد' : 'Enter count'}
+                    className={errors.brokenItemsCount ? 'border-red-500' : ''}
+                    dir={isRTL ? 'rtl' : 'ltr'}
+                  />
+                  {errors.brokenItemsCount && (
+                    <p className="text-red-500 text-xs mt-1">{errors.brokenItemsCount}</p>
+                  )}
+                </div>
+              )}
+
               {/* Mobile Number Field - Commented out - will be used later */}
-              {/* <div>
+              <div>
                 <label className="block text-sm font-bold text-[#274754] mb-2">
                   {t.mobileNumber} *
                 </label>
@@ -231,7 +253,7 @@ export default function MaintenanceRequest({ params }: { params: Promise<{ local
                 {errors.mobileNumber && (
                   <p className="text-red-500 text-xs mt-1">{errors.mobileNumber}</p>
                 )}
-              </div> */}
+              </div>
 
               {/* Message Field */}
               <div>
@@ -252,62 +274,6 @@ export default function MaintenanceRequest({ params }: { params: Promise<{ local
                   <p className="text-red-500 text-xs mt-1">{errors.message}</p>
                 )}
               </div>
-
-              {/* Image Upload Section - Commented out - will be used later */}
-              {/* <div>
-                <label className="block text-sm font-bold text-[#274754] mb-2">
-                  {t.attachPhoto} *
-                </label>
-                <div className="space-y-3">
-                  <Button
-                    type="button"
-                    variant="outline"
-                    onClick={handleTakePhoto}
-                    className="w-full"
-                  >
-                    <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" />
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 13a3 3 0 11-6 0 3 3 0 016 0z" />
-                    </svg>
-                    {t.takePhoto}
-                  </Button>
-
-                  <div className="relative">
-                    <input
-                      type="file"
-                      accept="image/*"
-                      onChange={handleImageUpload}
-                      className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
-                    />
-                    <Button
-                      type="button"
-                      variant="outline"
-                      className="w-full"
-                    >
-                      <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
-                      </svg>
-                      {t.uploadPhoto}
-                    </Button>
-                  </div>
-
-                  {formData.image && (
-                    <div className="mt-3">
-                      <img
-                        src={URL.createObjectURL(formData.image)}
-                        alt="Selected"
-                        className="w-full h-32 object-cover rounded-md border"
-                      />
-                      <p className="text-xs text-[#94782C] mt-1">
-                        {formData.image.name}
-                      </p>
-                    </div>
-                  )}
-                </div>
-                {errors.image && (
-                  <p className="text-red-500 text-xs mt-1">{errors.image}</p>
-                )}
-              </div> */}
 
               {/* Schedule Message */}
               <div className="bg-[#FAF6F5] p-4 rounded-md border border-[#EDEBED]">

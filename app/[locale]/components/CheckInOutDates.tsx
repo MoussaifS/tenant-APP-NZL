@@ -1,6 +1,5 @@
 'use client';
 
-import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { useState, useEffect } from 'react';
@@ -9,6 +8,7 @@ import { useAuth } from '@/app/components/AuthProvider';
 import { getBookingDataFromStorage, getFormattedArrivalDate, getFormattedDepartureDate } from '@/lib/bookingUtils';
 import { getMessages } from '@/messages';
 import { useParams } from 'next/navigation';
+import { createRequest, CreateRequestData } from '@/lib/apiUtils';
 
 interface CheckInOutDatesProps {
   locale?: string;
@@ -16,7 +16,7 @@ interface CheckInOutDatesProps {
 
 export default function CheckInOutDates({ locale }: CheckInOutDatesProps = {}) {
   const params = useParams();
-  const currentLocale = (locale || params?.locale || 'en') as 'en' | 'ar';
+  const currentLocale = (locale || params?.locale || 'en') as 'en' | 'ar' | 'es' | 'zh';
   const isRTL = currentLocale === 'ar';
   const t = getMessages(currentLocale);
   const { bookingData } = useAuth();
@@ -212,34 +212,85 @@ END:VCALENDAR`;
     setShowExtensionPopup(true);
   };
 
-  const handleConfirmExtension = () => {
+  const handleConfirmExtension = async () => {
     setShowExtensionPopup(false);
     
     // Get the number of days for extension
     const extensionDays = selectedDays === 'custom' ? customDays : selectedDays;
     
-    // Create WhatsApp message using translations
-    const accommodation = currentBookingData?.accommodation || (isRTL ? 'الإقامة' : 'the accommodation');
+    // Get booking data from localStorage
+    const bookingData = currentBookingData || getBookingDataFromStorage();
+    if (!bookingData || !bookingData.reference) {
+      console.error('Missing booking data or reference number');
+      return;
+    }
+
+    // Calculate new checkout date (current checkout + extension days)
+    const currentCheckout = new Date(bookingData.departure);
+    const newCheckout = new Date(currentCheckout);
+    newCheckout.setDate(newCheckout.getDate() + extensionDays);
+    
+    // Format dates with time for Arqam CRM (ISO datetime format)
+    // Arrival time: 15:45:00 (3:45 PM) - check-in time
+    // Departure time: 12:30:00 (12:30 PM) - check-out time
+    const formatDateTimeForArqaam = (date: Date, timeStr: string = '15:45:00') => {
+      const year = date.getFullYear();
+      const month = String(date.getMonth() + 1).padStart(2, '0');
+      const day = String(date.getDate()).padStart(2, '0');
+      return `${year}-${month}-${day} ${timeStr}`;
+    };
+
+    // Get dates with time directly from bookingData localStorage
+    // Check-in: arrival date at 15:45:00
+    // Check-out: new checkout date at 12:30:00
+    const datechekin = formatDateTimeForArqaam(new Date(bookingData.arrival), '15:45:00');
+    const datechekout = formatDateTimeForArqaam(newCheckout, '12:30:00');
+
+    // Extract room number from accommodation (e.g., "Alaredh R217" -> "R217")
+    const roomNumber = bookingData?.accommodation?.match(/R\d+/)?.[0] || bookingData?.accommodation || '';
+
+    // Prepare details for the extension request
+    const accommodation = bookingData?.accommodation || (isRTL ? 'الإقامة' : 'the accommodation');
     const dayWord = extensionDays === 1 ? t.day : t.days;
-    
-    // Replace placeholders in the translation template
-    const whatsappMessage = t.extensionWhatsAppMessage
-      .replace('{accommodation}', accommodation)
-      .replace('{days}', String(extensionDays))
-      .replace('{dayWord}', dayWord);
-    
-    // Encode the message for URL
-    const encodedMessage = encodeURIComponent(whatsappMessage);
-    const whatsappUrl = `https://wa.me/966544417180?text=${encodedMessage}`;
-    
-    // Open WhatsApp immediately (must be synchronous with user action to avoid popup blockers)
-    window.open(whatsappUrl, '_blank');
-    
-    // Show and auto-hide alert
-    setShowRequestAlert(true);
-    setTimeout(() => {
-      setShowRequestAlert(false);
-    }, 5000);
+    const details = `Extension request for ${accommodation}: ${extensionDays} ${dayWord}`;
+
+    // Create request in database via backend API with Arqam CRM fields
+    // Type: 'extending', Date: current time, Details: dynamic, Reference_Number: from localStorage
+    try {
+      const requestPayload: CreateRequestData = {
+        type: 'extending' as const,
+        date: new Date().toISOString(), // Current time when request is made
+        details: details, // Dynamic details based on user selection
+        Reference_Number: bookingData.reference, // From localStorage booking data
+        // Arqam CRM fields for extension requests
+        requesttype: 'طلب تمديد',
+        requestcategory: 'طلبات النزلاء',
+        datechekin: datechekin,
+        datechekout: datechekout,
+        roomnumber: roomNumber,
+        note: details,
+      };
+      
+      console.log('📤 Creating extension request with payload:', JSON.stringify(requestPayload, null, 2));
+      
+      const result = await createRequest(requestPayload);
+      if (result) {
+        console.log('✅ Extension request saved to database and sent to Arqam CRM successfully');
+        // Show success message
+        setShowRequestAlert(true);
+        setTimeout(() => {
+          setShowRequestAlert(false);
+        }, 5000);
+      } else {
+        console.warn('⚠️ Extension request save failed');
+        // Show error message
+        alert(isRTL ? 'فشل إرسال الطلب. يرجى المحاولة مرة أخرى.' : 'Failed to submit request. Please try again.');
+      }
+    } catch (requestError) {
+      console.error('❌ Error saving extension request to database:', requestError);
+      // Show error message
+      alert(isRTL ? 'حدث خطأ أثناء إرسال الطلب. يرجى المحاولة مرة أخرى.' : 'An error occurred while submitting the request. Please try again.');
+    }
   };
 
   const handleDaySelection = (days: number | 'custom') => {
@@ -263,7 +314,9 @@ END:VCALENDAR`;
             </svg>
             <AlertTitle className="text-blue-800">{t.extensionRequestSubmitted}</AlertTitle>
             <AlertDescription className="text-blue-700">
-              {extensionMessage}
+              {isRTL 
+                ? 'تم إرسال طلب التمديد بنجاح . سيتم الرد عليك قريباً.'
+                : 'Extension request has been successfully sent. You will be contacted soon.'}
             </AlertDescription>
           </Alert>
         </div>
@@ -279,7 +332,7 @@ END:VCALENDAR`;
               <div className="flex flex-col items-center justify-center mb-2">
                 <div className="flex flex-col items-center gap-1 bg-white/50 px-3 py-1.5 rounded-lg">
                   <p className="text-sm font-semibold text-gray-800">{checkOut || 'Invalid Date'}</p>
-                  <p className="text-sm font-semibold text-gray-600">{t.checkoutTime}</p>
+                  <p className="text-sm font-semibold text-gray-600 text-center">{t.checkoutTime}</p>
                 </div>
               </div>
             </div>

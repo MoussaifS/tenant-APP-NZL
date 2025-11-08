@@ -113,7 +113,7 @@ export default function AmenitiesSection({
       icon: <Key className="w-6 h-6 text-green-600" />,
       bgColor: 'bg-green-100',
       modalContent: (
-        <UnitLockAmenity locale={locale} />
+        <UnitLockAmenity locale={locale} isOpen={openModal === 'unitLock'} />
       )
     },
     {

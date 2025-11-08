@@ -6,13 +6,14 @@ import {
   isBookingAccessValid, 
   getFormattedArrivalDate, 
   getFormattedDepartureDate,
-  getRemainingDays 
+  getRemainingDays,
+  type BookingData
 } from '@/lib/bookingUtils';
 import { useEffect, useState } from 'react';
 
 export default function BookingDataExample() {
   const { bookingData, refreshBookingData } = useAuth();
-  const [localStorageData, setLocalStorageData] = useState(null);
+  const [localStorageData, setLocalStorageData] = useState<BookingData | null>(null);
   const [isValid, setIsValid] = useState(false);
 
   useEffect(() => {

@@ -17,7 +17,17 @@ console.log("this is the logo", Logo);
 export default function LoginPage({ params }: { params: Promise<{ locale: string }> }) {
   const router = useRouter();
   const { login, isAuthenticated } = useAuth();
-  const [locale, setLocale] = useState('en');
+  // Get locale from URL immediately to avoid hydration mismatch
+  const [locale, setLocale] = useState(() => {
+    if (typeof window !== 'undefined') {
+      const pathSegments = window.location.pathname.split('/').filter(Boolean);
+      const urlLocale = pathSegments[0];
+      if (['en', 'ar', 'es', 'zh'].includes(urlLocale)) {
+        return urlLocale;
+      }
+    }
+    return 'en';
+  });
   const [accessCode, setAccessCode] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
@@ -46,7 +56,7 @@ export default function LoginPage({ params }: { params: Promise<{ locale: string
 
   const handleLogin = async () => {
     if (accessCode.length < 3) { // Minimum 3 digits for booking reference
-      setError('MISSING_REFERENCE:' + getMessages(locale as 'en' | 'ar').codeRequired);
+      setError('MISSING_REFERENCE:' + getMessages(locale as 'en' | 'ar' | 'es' | 'zh').codeRequired);
       return;
     }
 
@@ -62,7 +72,7 @@ export default function LoginPage({ params }: { params: Promise<{ locale: string
         // Pass error code to display different error styles
         console.log('Login result:', result);
         const errorPrefix = result.errorCode ? `${result.errorCode}:` : '';
-        const errorMessage = result.error || getMessages(locale as 'en' | 'ar').invalidCode;
+        const errorMessage = result.error || getMessages(locale as 'en' | 'ar' | 'es' | 'zh').invalidCode;
         // Ensure error message is always a string
         const safeErrorMessage = typeof errorMessage === 'string' ? errorMessage : String(errorMessage);
         console.log('Setting error:', errorPrefix + safeErrorMessage);
@@ -86,7 +96,7 @@ export default function LoginPage({ params }: { params: Promise<{ locale: string
     return null; // Will redirect
   }
 
-  const t = getMessages(locale as 'en' | 'ar');
+  const t = getMessages(locale as 'en' | 'ar' | 'es' | 'zh');
   const isRTL = locale === 'ar';
 
   // Parse error to get error code and message
@@ -161,7 +171,7 @@ export default function LoginPage({ params }: { params: Promise<{ locale: string
     let finalMessage = message;
     
     if (errorsWithSupportContact.includes(code)) {
-      const supportText = getMessages(currentLocale as 'en' | 'ar').supportContact;
+      const supportText = getMessages(currentLocale as 'en' | 'ar' | 'es' | 'zh').supportContact;
       finalMessage = message + (message ? ' ' : '') + supportText;
     }
     
@@ -184,10 +194,10 @@ export default function LoginPage({ params }: { params: Promise<{ locale: string
         {/* Login Card */}
         <Card className="border border-gray-300 bg-white shadow-xl">
           <CardHeader className="text-center bg-[#CDB990] bg-opacity-10 border-b border-[#C1B29E] border-opacity-30">
-            <CardTitle className={`text-xl font-bold text-gray-900 ${isRTL ? 'text-right' : 'text-left'}`}>
+            <CardTitle className="text-xl font-bold text-gray-900 text-center">
               {t.title}  🏠
             </CardTitle>
-            <CardDescription className={`text-gray-700 font-medium ${isRTL ? 'text-right' : 'text-left'}`}>
+            <CardDescription className="text-gray-700 font-medium text-center">
               {t.description}
             </CardDescription>
           </CardHeader>

@@ -57,6 +57,30 @@ export const en = {
   mc_success: "Request sent successfully!",
   mc_error: "Failed to send request. Please try again.",
 
+  // Maintenance Categories (values are Arabic for backend, labels are translated)
+  maintenanceCategories: {
+    "انقطاع مياه": "Water Outage",
+    "انقطاع كهرباء": "Power Outage",
+    "مشاكل تكييف": "AC Problems (Photo + Count Required)",
+    "تسريب": "Leakage (Photo + Count Required)",
+    "استبدال شطّاف": "Toilet Seat Replacement (Photo + Count Required)",
+    "نجارة : رف او باب": "Carpentry: Shelf or Door (Photo + Count Required)",
+    "أخرى": "Other (Photo + Count Required)",
+    "انقطاع الانترنت": "Internet Outage",
+    "السخان": "Water Heater",
+    "أعطال الباب": "Door Malfunction",
+    "مشكلة مغسلة يد": "Hand Basin Problem",
+    "مشكلة الدش أو سماعة الشاور": "Shower or Shower Head Problem",
+    "مشكلة تسريب سخان": "Water Heater Leak",
+    "مشكلة في أحد اكسسوارات دورة المياه": "Bathroom Accessory Problem (Towel Rack, Tissue Holder, Soap Dispenser)",
+    "اهتزاز أو اتجاج مغسلة الملابس": "Washing Machine Vibration or Noise",
+    "عطل عام في مغسلة الملابس": "General Washing Machine Malfunction",
+    "انتهاء أو نفاذ الغاز": "Gas Empty or Depleted",
+    "مشكلة بالفرن أو عطل": "Oven Problem or Malfunction",
+    "عطل انارة أو فيش": "Lighting or Socket Malfunction",
+    "مشكلة أدراج ودواليب أو طاولة أو كنب أو كراسي": "Drawer, Cabinet, Table, Sofa or Chair Problem"
+  },
+
   // Unit Information
   unitInformation: "Property Information",
   loadingUnitInfo: "Loading unit information...",
@@ -184,6 +208,86 @@ export const en = {
       description: "Get exclusive coupons and discounts for various services and products.",
       couponsAvailable: "Coupons Available"
     }
+  },
+
+  // Cleaning Services
+  cleaning: {
+    title: "Cleaning Services",
+    subtitle: "Choose what works for you",
+    quickBooking: "Quick Booking",
+    services: "All Services",
+    popular: "Most Popular",
+    recommended: "Recommended for Your Unit",
+    
+    // Service Categories
+    regularCleaning: "Regular Cleaning",
+    deepCleaning: "Deep Cleaning",
+    monthlyPlan: "Monthly Plan",
+    linens: "Linens & Towels",
+    extras: "Extra Guest Services",
+    
+    // Service Details
+    basicCleaningTitle: "Quick Clean",
+    basicCleaningDesc: "Bathroom, floors, and trash removal",
+    
+    fullCleaningTitle: "Full Apartment Clean",
+    fullCleaningDesc: "Complete cleaning of your entire unit",
+    
+    monthlyTitle: "Monthly Package",
+    monthlyDesc: "4 visits per month • Save 20%",
+    
+    linensTitle: "Fresh Linens",
+    linensDesc: "Bed sheets, blankets & towels",
+    
+    guestTitle: "Guest Setup",
+    guestDesc: "Complete bedding set for additional guests",
+    
+    // Service Info
+    duration: "2 hours",
+    available: "Today, 3-8 PM",
+    fromPrice: "From",
+    perVisit: "/ visit",
+    perMonth: "/ month",
+    saveUp: "Save",
+    
+    // Steps
+    step1: "Service",
+    step2: "Time",
+    step3: "Confirm",
+    
+    // Time Selection
+    pickTime: "Pick a time",
+    todayOnly: "Available today",
+    workingHours: "3:00 PM - 8:00 PM",
+    lateNote: "Requests after 7 PM scheduled for next day",
+    
+    // Confirmation
+    reviewBooking: "Review your booking",
+    totalPrice: "Total",
+    confirmPay: "Request Service",
+    cancel: "Cancel",
+    
+    // Unit Info
+    yourUnit: "Your Unit",
+    building: "Building",
+    stayDuration: "Stay"
+  },
+
+  // Unit Lock
+  unitLockDetails: {
+    unitNumber: "Unit Number",
+    buildingPassword: "Building Password",
+    apartmentPassword: "Apartment Password",
+    development: "Development",
+    copy: "Copy",
+    loading: "Loading...",
+    bookingDataNotAvailable: "Booking data not available",
+    unitLockDataNotFound: "Unit lock data not found",
+    failedToFetchData: "Failed to fetch data",
+    noDataAvailable: "No data available",
+    howToUse: "How to use",
+    instruction2: "Press the unlock button",
+    instruction3: "The door will unlock automatically",
   }
 };
 

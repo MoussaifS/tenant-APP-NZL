@@ -1,6 +1,7 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Open_Sans } from "next/font/google";
 import "../globals.css";
+import LocaleLayoutClient from "../components/LocaleLayout";
 
 const openSans = Open_Sans({
   variable: "--font-open-sans",
@@ -9,15 +10,23 @@ const openSans = Open_Sans({
 });
 
 export const metadata: Metadata = {
-  title: "Guest Portal",
+  title: "Guest Guest",
   description: "Your personalized guest experience portal",
-  viewport: "width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no",
+};
+
+export const viewport: Viewport = {
+  width: "device-width",
+  initialScale: 1,
+  maximumScale: 1,
+  userScalable: false,
 };
 
 export function generateStaticParams() {
   return [
     { locale: 'en' },
     { locale: 'ar' },
+    { locale: 'es' },
+    { locale: 'zh' },
   ];
 }
 
@@ -30,14 +39,11 @@ export default async function LocaleLayout({
 }) {
   const { locale } = await params;
   
+  // Wrap with LocaleLayoutClient to set HTML attributes synchronously
   return (
-    <html lang={locale} dir={locale === 'ar' ? 'rtl' : 'ltr'}>
-      <body
-        className={`${openSans.variable} antialiased`}
-      >
-        {children}
-      </body>
-    </html>
+    <LocaleLayoutClient locale={locale}>
+      {children}
+    </LocaleLayoutClient>
   );
 }
 

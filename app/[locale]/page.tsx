@@ -29,7 +29,7 @@ export default function Home({ params }: { params: Promise<{ locale: string }> }
 
   useEffect(() => {
     // Validate locale
-    if (!['en', 'ar'].includes(locale)) {
+    if (!['en', 'ar', 'es', 'zh'].includes(locale)) {
       router.push('/en');
       return;
     }
@@ -39,37 +39,35 @@ export default function Home({ params }: { params: Promise<{ locale: string }> }
     return <div>Loading...</div>;
   }
 
-  const t = getMessages(locale as 'en' | 'ar');
+  const t = getMessages(locale as 'en' | 'ar' | 'es' | 'zh');
   // const isRTL = locale === 'ar';
 
   return (
     <LocaleLayout locale={locale}>
       <div className="min-h-screen bg-gray-50 pb-20">
-        <WelcomeHeader 
+        <WelcomeHeader
           locale={locale}
         />
-        
-       
+
+
 
         <CheckInOutDates locale={locale} />
 
-        <AmenitiesSection 
+        <AmenitiesSection
           amenities={t.amenities}
           wifi={t.wifi}
           features={t.features}
           unitLock={t.unitLock}
           parking={t.parking}
+          locale={locale}
         />
 
-        
 
-        <PartnerServices 
-          locale={locale}       />
 
-{/* <CurrentReservation 
-          currentReservation={t.currentReservation}
-          location={t.location}
-        /> */}
+        <PartnerServices
+          locale={locale} />
+
+
 
         <BottomNavigation locale={locale} />
       </div>

@@ -5,32 +5,42 @@ import { useRouter } from 'next/navigation';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { getMessages } from '@/messages';
+import { createRequest } from '@/lib/apiUtils';
+import { getBookingDataFromStorage } from '@/lib/bookingUtils';
 
 interface MaintenanceFormData {
   topic: string;
+  category?: string; // Arqam CRM category
   mobileNumber: string;
   message: string;
-  image: File | null;
-  imagePreview: string | null;
+  brokenItemsCount?: number;
 }
 
 export default function MaintenanceConfirmation({ params }: { params: Promise<{ locale: string }> }) {
   const router = useRouter();
-  const [locale, setLocale] = useState('en');
+  // Get locale from URL immediately to avoid hydration mismatch
+  const [locale, setLocale] = useState(() => {
+    if (typeof window !== 'undefined') {
+      const pathSegments = window.location.pathname.split('/').filter(Boolean);
+      const urlLocale = pathSegments[0];
+      if (['en', 'ar', 'es', 'zh'].includes(urlLocale)) {
+        return urlLocale;
+      }
+    }
+    return 'en';
+  });
   const [formData, setFormData] = useState<MaintenanceFormData | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showSuccessAlert, setShowSuccessAlert] = useState(false);
 
   // Translations moved to messages folder
-  const all = getMessages(locale as 'en' | 'ar');
+  const all = getMessages(locale as 'en' | 'ar' | 'es' | 'zh');
   const t = {
     title: all.mc_title,
     reviewRequest: all.mc_reviewRequest,
     topic: all.mc_topic,
     mobileNumber: all.mc_mobileNumber,
     message: all.mc_message,
-    attachedPhoto: all.mc_attachedPhoto,
-    noPhoto: all.mc_noPhoto,
     confirm: all.mc_confirm,
     edit: all.mc_edit,
     cancel: all.mc_cancel,
@@ -56,78 +66,97 @@ export default function MaintenanceConfirmation({ params }: { params: Promise<{ 
     }
   }, [params, router, locale]);
 
-  const uploadImageToImgBB = async (file: File): Promise<string | null> => {
-    try {
-      const formData = new FormData();
-      formData.append('image', file);
-      
-      const response = await fetch('https://api.imgbb.com/1/upload?key=546c25a59c58ad7', {
-        method: 'POST',
-        body: formData,
-      });
-      
-      const data = await response.json();
-      return data.success ? data.data.url : null;
-    } catch (error) {
-      console.error('Error uploading image to ImgBB:', error);
-      return null;
-    }
-  };
-
-  const uploadImage = async (file: File): Promise<string | null> => {
-    // Try ImgBB for image upload
-    return await uploadImageToImgBB(file);
-  };
-
   const handleConfirm = async () => {
     if (!formData) return;
+
+    // Validate required fields
+    const category = formData.category || formData.topic;
+    if (!category?.trim() || !formData.message?.trim()) {
+      console.error('Missing required fields: category or message');
+      setIsSubmitting(false);
+      return;
+    }
 
     setIsSubmitting(true);
 
     try {
-      // Upload image if present - Commented out - will be used later
-      // let imageUrl = null;
-      // if (formData.image) {
-      //   imageUrl = await uploadImage(formData.image);
-      // }
-
-      // Create WhatsApp message with maintenance request details
-      let whatsappMessage = `Hello! I have a maintenance request for accommodation "Alaredh R217":
-
-Topic: ${formData.topic}
-Message: ${formData.message}`;
-
-      // Image and mobile number references commented out - will be used later
-      // Mobile: ${formData.mobileNumber}
-      // if (imageUrl) {
-      //   whatsappMessage += `\n\n📷 Image: ${imageUrl}`;
-      // } else if (formData.imagePreview) {
-      //   whatsappMessage += `\n\n📷 I have attached a photo with this request (please check your gallery).`;
-      // } else {
-      //   whatsappMessage += `\n\nNo photo attached.`;
-      // }
-
-      whatsappMessage += `\n\nPlease help me with this maintenance request. Thank you!`;
-      
-      // Encode the message for URL
-      const encodedMessage = encodeURIComponent(whatsappMessage);
-      const whatsappUrl = `https://wa.me/966537665619?text=${encodedMessage}`;
-      
-      // Clear stored data
-      sessionStorage.removeItem('maintenanceRequest');
-      
-      // Show success message briefly then redirect to WhatsApp
-      setTimeout(() => {
+      // Get booking data from localStorage
+      const bookingData = getBookingDataFromStorage();
+      if (!bookingData || !bookingData.reference) {
+        console.error('Missing booking data or reference number');
         setIsSubmitting(false);
-        setShowSuccessAlert(true);
-        
-        // Redirect to WhatsApp after showing alert
-        setTimeout(() => {
-          window.open(whatsappUrl, '_blank');
-          // Also redirect to home page as fallback
-          router.push(`/${locale}`);
-        }, 2000);
-      }, 1000);
+        return;
+      }
+
+      // Prepare dynamic details combining topic/category and message
+      const sanitizedCategory = formData.category || formData.topic.trim();
+      const sanitizedMessage = formData.message.trim();
+      const details = `Category: ${sanitizedCategory}\nMessage: ${sanitizedMessage}`;
+      
+      // Add broken items count if available
+      const note = formData.brokenItemsCount 
+        ? `${details}\nعدد الأشياء المتعطلة: ${formData.brokenItemsCount}`
+        : details;
+
+      // Extract room number from accommodation
+      const roomNumber = bookingData.accommodation?.match(/R\d+/)?.[0] || bookingData.accommodation || '';
+
+      // Format dates from bookingData for Arqam CRM (YYYY-MM-DD format)
+      const formatDateForArqaam = (dateString: string) => {
+        if (!dateString) return 'null';
+        const date = new Date(dateString);
+        if (isNaN(date.getTime())) return 'null';
+        const year = date.getFullYear();
+        const month = String(date.getMonth() + 1).padStart(2, '0');
+        const day = String(date.getDate()).padStart(2, '0');
+        return `${year}-${month}-${day}`;
+      };
+
+      const datechekin = formatDateForArqaam(bookingData.arrival);
+      const datechekout = formatDateForArqaam(bookingData.departure);
+
+      // Create request in database via backend API with Arqam CRM fields
+      // Type: 'maintenance', Date: current time, Details: dynamic, Reference_Number: from localStorage
+      // Phone_Number: only for maintenance requests
+      try {
+        const result = await createRequest({
+          type: 'maintenance',
+          date: new Date().toISOString(), // Current time when request is made
+          Phone_Number: formData.mobileNumber?.trim() || undefined, // Only for maintenance
+          details: details, // Dynamic details based on user input
+          Reference_Number: bookingData.reference, // From localStorage booking data
+          // Arqam CRM fields for maintenance requests
+          requesttype: 'صيانة',
+          requestcategory: sanitizedCategory,
+          datechekin: datechekin,
+          datechekout: datechekout,
+          roomnumber: roomNumber,
+          phone: formData.mobileNumber?.trim() || undefined,
+          note: note,
+        });
+        if (result) {
+          console.log('✅ Maintenance request saved to database and sent to Arqam CRM successfully');
+          // Clear stored data
+          sessionStorage.removeItem('maintenanceRequest');
+          
+          // Show success message
+          setIsSubmitting(false);
+          setShowSuccessAlert(true);
+          
+          // Redirect to home page after showing success message
+          setTimeout(() => {
+            router.push(`/${locale}`);
+          }, 3000);
+        } else {
+          console.warn('⚠️ Maintenance request save failed');
+          setIsSubmitting(false);
+          alert(isRTL ? 'فشل إرسال الطلب. يرجى المحاولة مرة أخرى.' : 'Failed to submit request. Please try again.');
+        }
+      } catch (requestError) {
+        console.error('❌ Error saving maintenance request to database:', requestError);
+        setIsSubmitting(false);
+        alert(isRTL ? 'حدث خطأ أثناء إرسال الطلب. يرجى المحاولة مرة أخرى.' : 'An error occurred while submitting the request. Please try again.');
+      }
     } catch (error) {
       console.error('Error submitting maintenance request:', error);
       setIsSubmitting(false);
@@ -183,15 +212,13 @@ Message: ${formData.message}`;
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
               </svg>
               <div>
-                <h3 className="text-sm font-medium text-green-800">Maintenance Request Prepared!</h3>
+                <h3 className="text-sm font-medium text-green-800">
+                  {isRTL ? 'تم إرسال الطلب بنجاح!' : 'Request Submitted Successfully!'}
+                </h3>
                 <p className="text-sm text-green-700 mt-1">
-                  You will be redirected to WhatsApp in a few seconds to send your request.
-                  {/* Commented out - will be used later */}
-                  {/* {formData?.imagePreview && (
-                    <span className="block mt-1 font-medium">
-                      📷 Don't forget to attach your photo in WhatsApp!
-                    </span>
-                  )} */}
+                  {isRTL 
+                    ? 'تم إرسال طلب الصيانة. سيتم الرد عليك قريباً.'
+                    : 'Your maintenance request has been sent. You will be contacted soon.'}
                 </p>
               </div>
             </div>
@@ -200,10 +227,10 @@ Message: ${formData.message}`;
       )}
 
       <div className="px-4 py-6">
-        <Card className="border border-[#EDEBED] bg-white shadow-sm">
+        <Card className="border border-[#EDEBED] bg-white shadow-sm" dir={isRTL ? 'rtl' : 'ltr'}>
           <CardHeader className="border-b border-[#EDEBED]">
-            <CardTitle className="text-center text-[#274754]">{t.title}</CardTitle>
-            <p className="text-sm text-[#94782C] text-center">{t.reviewRequest}</p>
+            <CardTitle className="text-center text-[#274754]" dir={isRTL ? 'rtl' : 'ltr'}>{t.title}</CardTitle>
+            <p className="text-sm text-[#94782C] text-center" dir={isRTL ? 'rtl' : 'ltr'}>{t.reviewRequest}</p>
           </CardHeader>
           <CardContent>
             <div className="space-y-6">
@@ -219,8 +246,7 @@ Message: ${formData.message}`;
                 </div>
               </div>
 
-              {/* Mobile Number - Commented out - will be used later */}
-              {/* <div>
+              <div>
                 <label className="block text-sm font-medium text-[#94782C] mb-2">
                   {t.mobileNumber}
                 </label>
@@ -229,7 +255,7 @@ Message: ${formData.message}`;
                     {formData.mobileNumber}
                   </p>
                 </div>
-              </div> */}
+              </div>
 
               {/* Message */}
               <div>
@@ -242,29 +268,6 @@ Message: ${formData.message}`;
                   </p>
                 </div>
               </div>
-
-              {/* Attached Photo - Commented out - will be used later */}
-              {/* <div>
-                <label className="block text-sm font-medium text-[#94782C] mb-2">
-                  {t.attachedPhoto}
-                </label>
-                <div className="p-3 bg-white rounded-md border border-[#EDEBED]">
-                  {formData.imagePreview ? (
-                    <div>
-                      <img
-                        src={formData.imagePreview}
-                        alt="Attached photo"
-                        className="w-full h-32 object-cover rounded-md"
-                      />
-                      <p className="text-xs text-[#94782C] mt-2">
-                        {formData.image?.name || 'Attached photo'}
-                      </p>
-                    </div>
-                  ) : (
-                    <p className="text-[#94782C] text-sm">{t.noPhoto}</p>
-                  )}
-                </div>
-              </div> */}
 
               {/* Action Buttons */}
               <div className="space-y-3 pt-4">

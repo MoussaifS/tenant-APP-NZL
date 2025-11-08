@@ -20,7 +20,7 @@ export default function PartnersPage({ params }: { params: Promise<{ locale: str
   }, [params]);
 
   useEffect(() => {
-    if (!['en', 'ar'].includes(locale)) {
+    if (!['en', 'ar', 'es', 'zh'].includes(locale)) {
       router.push('/en/partners');
     }
   }, [locale, router]);
@@ -35,7 +35,7 @@ export default function PartnersPage({ params }: { params: Promise<{ locale: str
     );
   }
 
-  const t = getMessages(locale as 'en' | 'ar');
+  const t = getMessages(locale as 'en' | 'ar' | 'es' | 'zh');
   const isRTL = locale === 'ar';
 
   const handleCall = (phone: string) => {

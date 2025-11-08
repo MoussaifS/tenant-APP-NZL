@@ -57,8 +57,8 @@
   /* Font families - English defaults */
   --font-body-en: 'Dicat Gothic', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
   --font-header-en: 'Dicat Gothic', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-  --font-body-ar: 'Calibri', 'Segoe UI', Tahoma, Arial, sans-serif;
-  --font-header-ar: 'Calibri', 'Segoe UI', Tahoma, Arial, sans-serif;
+  --font-body-ar: '29LT Bukra', 'Calibri', 'Segoe UI', Tahoma, Arial, sans-serif;
+  --font-header-ar: '29LT Bukra', 'Calibri', 'Segoe UI', Tahoma, Arial, sans-serif;
   --font-welcome-en: var(--font-open-sans), 'Open Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
   --font-welcome-ar: '29LT Bukra', 'Calibri', 'Segoe UI', Tahoma, Arial, sans-serif;
 }
@@ -192,11 +192,6 @@ button, a {
 }
 
 /* RTL-specific adjustments */
-[dir="rtl"] .flex,
-.rtl .flex {
-  flex-direction: row-reverse;
-}
-
 [dir="rtl"] .text-right,
 .rtl .text-right {
   text-align: left;

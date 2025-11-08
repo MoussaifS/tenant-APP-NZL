@@ -17,7 +17,7 @@ export default function UnitInformation({ params }: { params: Promise<{ locale: 
   const [currentUnit, setCurrentUnit] = useState<Unit | null>(null);
   const [error, setError] = useState<string | null>(null);
   const isRTL = locale === 'ar';
-  const t = getMessages(locale as 'en' | 'ar');
+  const t = getMessages(locale as 'en' | 'ar' | 'es' | 'zh');
 
   useEffect(() => {
     params.then(({ locale: paramLocale }) => {
@@ -26,7 +26,7 @@ export default function UnitInformation({ params }: { params: Promise<{ locale: 
   }, [params]);
 
   useEffect(() => {
-    if (!['en', 'ar'].includes(locale)) {
+    if (!['en', 'ar', 'es', 'zh'].includes(locale)) {
       router.push('/en/unit-information');
       return;
     }
@@ -39,7 +39,7 @@ export default function UnitInformation({ params }: { params: Promise<{ locale: 
         setError(null);
 
         const bookingData = getBookingDataFromStorage();
-        const currentT = getMessages(locale as 'en' | 'ar');
+        const currentT = getMessages(locale as 'en' | 'ar' | 'es' | 'zh');
         if (!bookingData) {
           setError(currentT.noBookingDataFound);
           return;
@@ -55,7 +55,7 @@ export default function UnitInformation({ params }: { params: Promise<{ locale: 
         setCurrentUnit(unit);
       } catch (err) {
         console.error('Error loading unit data:', err);
-        const currentT = getMessages(locale as 'en' | 'ar');
+        const currentT = getMessages(locale as 'en' | 'ar' | 'es' | 'zh');
         setError(currentT.failedToLoadUnitInfo);
       } finally {
         setIsLoading(false);

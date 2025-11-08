@@ -27,7 +27,7 @@ export default function ExtensionDaysModal({
   onDaySelect,
   onCustomDaysChange,
 }: ExtensionDaysModalProps) {
-  const currentLocale = (locale || 'en') as 'en' | 'ar';
+  const currentLocale = (locale || 'en') as 'en' | 'ar' | 'es' | 'zh';
   const isRTL = currentLocale === 'ar';
   const t = getMessages(currentLocale);
 
