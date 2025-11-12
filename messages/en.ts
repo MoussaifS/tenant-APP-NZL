@@ -179,7 +179,7 @@ export const en = {
     fireDepartmentPhone: "998",
     ourNumber: "Our Number (For Emergency)",
     ourNumberDescription: "Contact us for urgent support",
-    ourPhone: "+966 11 234 5679",
+    ourPhone: "+966 9200 15064",
     whatsapp: "WhatsApp Chat",
     whatsappDescription: "Chat with us on WhatsApp for quick assistance",
     chatOnWhatsapp: "Chat on WhatsApp",
@@ -206,7 +206,6 @@ export const en = {
     noonMinutes: {
       name: "Noon Minutes",
       description: "Get exclusive coupons and discounts for various services and products.",
-      couponsAvailable: "Coupons Available"
     }
   },
 

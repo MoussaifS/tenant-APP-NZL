@@ -130,9 +130,9 @@ export default function AmenitiesSection({
   return (
     <div className="px-4" dir={isRTL ? 'rtl' : 'ltr'}>
       <div className={`flex ${isRTL ? 'flex-row-reverse' : ''} justify-between items-center mb-2`}>
-        <div className={`flex items-center ${isRTL ? 'flex-row-reverse' : ''} gap-2`}>
+        {/* <div className={`flex items-center ${isRTL ? 'flex-row-reverse' : ''} gap-2`}>
           <h2 className={`text-lg font-bold text-gray-800 ${isRTL ? 'text-right' : 'text-left'}`}>{amenities}</h2>
-        </div>
+        </div> */}
       </div>
       <div className="flex justify-between">
         {amenitiesData.map((amenity) => (

@@ -183,11 +183,11 @@ export const ar = {
     emergencyNumber: "خدمات الطوارئ",
     ambulance: "الاسعاف",
     ambulancePhone: "997",
-    fireDepartment: "الاطفاء",
+    fireDepartment: "الدفاع المدني",
     fireDepartmentPhone: "998",
     ourNumber: "رقمنا (للطوارئ)",
     ourNumberDescription: "اتصل بنا للحصول على دعم عاجل",
-    ourPhone: "+966 11 234 5679",
+    ourPhone: "+966 9200 15064",
     whatsapp: "محادثة واتساب",
     whatsappDescription: "تحدث معنا على واتساب للحصول على مساعدة سريعة",
     chatOnWhatsapp: "التواصل عبر واتساب",
@@ -214,7 +214,6 @@ export const ar = {
     noonMinutes: {
       name: "نون مينتس",
       description: "احصل على كوبونات وخصومات حصرية للعديد من الخدمات والمنتجات.",
-      couponsAvailable: "كوبونات متاحة"
     }
   },
 

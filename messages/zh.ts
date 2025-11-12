@@ -179,7 +179,7 @@ export const zh = {
     fireDepartmentPhone: "998",
     ourNumber: "我们的号码（紧急情况）",
     ourNumberDescription: "如需紧急支持，请联系我们",
-    ourPhone: "+966 11 234 5679",
+    ourPhone: "+966 9200 15064",
     whatsapp: "WhatsApp 聊天",
     whatsappDescription: "在 WhatsApp 上与我们聊天以获得快速帮助",
     chatOnWhatsapp: "在 WhatsApp 上聊天",
@@ -206,7 +206,6 @@ export const zh = {
     noonMinutes: {
       name: "Noon Minutes",
       description: "获取各种服务和产品的专属优惠券和折扣。",
-      couponsAvailable: "可用优惠券"
     }
   },
 

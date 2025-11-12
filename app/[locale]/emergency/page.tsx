@@ -7,12 +7,13 @@ import BottomNavigation from '../components/BottomNavigation';
 import { useAuth } from '../../components/AuthProvider';
 import { getMessages } from '@/messages';
 import { Button } from '@/components/ui/button';
+import { getBookingDataFromStorage } from '@/lib/bookingUtils';
 
 export default function EmergencyPage({ params }: { params: Promise<{ locale: string }> }) {
   const router = useRouter();
   const [locale, setLocale] = useState('en');
   const [isLoading, setIsLoading] = useState(true);
-  const { logout } = useAuth();
+  const { logout, bookingData } = useAuth();
 
   useEffect(() => {
     params.then(({ locale: paramLocale }) => {
@@ -43,8 +44,36 @@ export default function EmergencyPage({ params }: { params: Promise<{ locale: st
     // TODO: Replace with your actual WhatsApp number (format: country code + number without +)
     // Example: For +966 11 234 5678, use: '966112345678'
     const whatsappNumber = '966500000000'; // Replace with your actual WhatsApp number
-    const message = encodeURIComponent(t.emergency.whatsappMessage || 'Hello, I need assistance');
-    window.open(`https://wa.me/${whatsappNumber}?text=${message}`, '_blank');
+    
+    // Get booking data from context or localStorage as fallback
+    const currentBookingData = bookingData || getBookingDataFromStorage();
+    const bookingRef = currentBookingData?.reference || '';
+    const accommodation = currentBookingData?.accommodation || '';
+    
+    // Build message based on language - Arabic if locale is Arabic, otherwise English
+    let message = '';
+    if (locale === 'ar') {
+      // Saudi dialect Arabic message
+      if (bookingRef && accommodation) {
+        message = `السلام عليكم، محتاج مساعدة\n\nرقم الحجز: ${bookingRef}\nالوحدة: ${accommodation}`;
+      } else if (bookingRef) {
+        message = `السلام عليكم، محتاج مساعدة\n\nرقم الحجز: ${bookingRef}`;
+      } else {
+        message = 'السلام عليكم، محتاج مساعدة';
+      }
+    } else {
+      // English message (for all other languages)
+      if (bookingRef && accommodation) {
+        message = `Hello, I need assistance\n\nBooking Reference: ${bookingRef}\nAccommodation: ${accommodation}`;
+      } else if (bookingRef) {
+        message = `Hello, I need assistance\n\nBooking Reference: ${bookingRef}`;
+      } else {
+        message = 'Hello, I need assistance';
+      }
+    }
+    
+    const encodedMessage = encodeURIComponent(message);
+    window.open(`https://wa.me/${whatsappNumber}?text=${encodedMessage}`, '_blank');
   };
 
   const handleCall = (number: string) => {
@@ -69,7 +98,13 @@ export default function EmergencyPage({ params }: { params: Promise<{ locale: st
                 onClick={() => router.back()}
                 className="p-2 text-[#274754] hover:bg-[#EDEBED]"
               >
-                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <svg 
+                  className="w-5 h-5" 
+                  fill="none" 
+                  stroke="currentColor" 
+                  viewBox="0 0 24 24"
+                  style={locale === 'ar' ? { transform: 'scaleX(-1)' } : {}}
+                >
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
                 </svg>
               </Button>
@@ -108,7 +143,7 @@ export default function EmergencyPage({ params }: { params: Promise<{ locale: st
                   </svg>
                   <span>{t.emergency.ambulance}</span>
                 </div>
-                <span className="font-semibold">{t.emergency.ambulancePhone}</span>
+                <span className="font-semibold" dir="ltr">{t.emergency.ambulancePhone}</span>
               </button>
               
               {/* Fire Department */}
@@ -136,7 +171,7 @@ export default function EmergencyPage({ params }: { params: Promise<{ locale: st
                   </svg>
                   <span>{t.emergency.fireDepartment}</span>
                 </div>
-                <span className="font-semibold">{t.emergency.fireDepartmentPhone}</span>
+                <span className="font-semibold" dir="ltr">{t.emergency.fireDepartmentPhone}</span>
               </button>
             </div>
           </div>
@@ -184,7 +219,7 @@ export default function EmergencyPage({ params }: { params: Promise<{ locale: st
                   >
                     <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z" />
                   </svg>
-                  {t.emergency.ourPhone}
+                  <span dir="ltr">{t.emergency.ourPhone}</span>
                 </button>
               </div>
             </div>

@@ -1,4 +1,7 @@
+'use client';
+
 import Link from "next/link"
+import { usePathname } from "next/navigation";
 import { getMessages } from '@/messages';
 
 interface BottomNavigationProps {
@@ -6,6 +9,7 @@ interface BottomNavigationProps {
 }
 
 export default function Component({ locale = "en" }: BottomNavigationProps) {
+  const pathname = usePathname();
   const currentLocale = (locale || 'en') as 'en' | 'ar' | 'es' | 'zh';
   const isRTL = currentLocale === 'ar';
   const t = getMessages(currentLocale);
@@ -14,27 +18,41 @@ export default function Component({ locale = "en" }: BottomNavigationProps) {
     {
       href: `/${locale}`,
       icon: <HomeIcon className="h-6 w-6" />,
-      label: t.bottomNavHome
+      label: t.bottomNavHome,
+      matchPath: `/${locale}`
     },
     {
       href: `/${locale}/unit-information`,
       icon: <InfoIcon className="h-6 w-6" />,
-      label: t.bottomNavUnitInfo
+      label: t.bottomNavUnitInfo,
+      matchPath: `/${locale}/unit-information`
     },
     {
       href: `/${locale}/partners`,
       icon: <GiftIcon className="h-6 w-6" />,
-      label: t.bottomNavPartners
+      label: t.bottomNavPartners,
+      matchPath: `/${locale}/partners`
     },
     {
       href: `/${locale}/emergency`,
       icon: <PhoneIcon className="h-6 w-6" />,
-      label: t.bottomNavContact
+      label: t.bottomNavContact,
+      matchPath: `/${locale}/emergency`
     }
   ];
 
   // Reverse the array for RTL
   const orderedItems = isRTL ? [...navItems].reverse() : navItems;
+
+  // Check if a route is active
+  const isActive = (itemHref: string, matchPath: string) => {
+    // For home page, match exactly or when pathname ends with just the locale
+    if (matchPath === `/${locale}`) {
+      return pathname === `/${locale}` || pathname === `/${locale}/`;
+    }
+    // For other routes, check if pathname starts with the match path
+    return pathname.startsWith(matchPath);
+  };
 
   return (
     <nav 
@@ -42,18 +60,29 @@ export default function Component({ locale = "en" }: BottomNavigationProps) {
       dir={isRTL ? 'rtl' : 'ltr'}
       style={{ direction: isRTL ? 'rtl' : 'ltr' }}
     >
-      {orderedItems.map((item, index) => (
-        <Link
-          key={index}
-          href={item.href}
-          className="flex flex-col items-center justify-center gap-1 text-sm font-medium text-muted-foreground hover:text-primary focus:text-primary"
-          prefetch={false}
-          style={{ flexDirection: 'column' }}
-        >
-          {item.icon}
-          <span className="text-center">{item.label}</span>
-        </Link>
-      ))}
+      {orderedItems.map((item, index) => {
+        const active = isActive(item.href, item.matchPath);
+        return (
+          <Link
+            key={index}
+            href={item.href}
+            className={`flex flex-col items-center justify-center gap-1 text-sm font-medium transition-colors ${
+              active 
+                ? 'text-primary' 
+                : 'text-muted-foreground hover:text-primary focus:text-primary'
+            }`}
+            prefetch={false}
+            style={{ flexDirection: 'column' }}
+          >
+            <span className={active ? 'text-primary' : ''}>
+              {item.icon}
+            </span>
+            <span className={`text-center ${active ? 'text-primary font-semibold' : ''}`}>
+              {item.label}
+            </span>
+          </Link>
+        );
+      })}
     </nav>
   )
 }

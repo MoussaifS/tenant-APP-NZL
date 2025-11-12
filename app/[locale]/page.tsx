@@ -44,7 +44,7 @@ export default function Home({ params }: { params: Promise<{ locale: string }> }
 
   return (
     <LocaleLayout locale={locale}>
-      <div className="min-h-screen bg-gray-50 pb-20">
+      <div className="min-h-screen bg-[#FAF6F5] pb-20">
         <WelcomeHeader
           locale={locale}
         />

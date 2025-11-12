@@ -74,6 +74,7 @@ export default function PartnersPage({ params }: { params: Promise<{ locale: str
                   fill="none" 
                   stroke="currentColor" 
                   viewBox="0 0 24 24"
+                  style={locale === 'ar' ? { transform: 'scaleX(-1)' } : {}}
                 >
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
                 </svg>
@@ -122,20 +123,10 @@ export default function PartnersPage({ params }: { params: Promise<{ locale: str
                 {t.partners.visitWebsite}
               </button>
 
-              <div className="grid grid-cols-2 gap-2">
-                <button
-                  onClick={() => handleCall(t.partners.mezwalah.phone)}
-                  className="py-3 bg-[#DECFBC] text-[#274754] rounded-xl font-medium hover:bg-[#CDB990] transition-all active:scale-95 flex items-center justify-center gap-2 touch-manipulation"
-                  style={{ WebkitTapHighlightColor: 'transparent' }}
-                >
-                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z" />
-                  </svg>
-                  {t.partners.callNow}
-                </button>
+              <div className="grid grid-cols-1">
                 <button
                   onClick={() => handleWhatsApp(t.partners.mezwalah.phone, t.partners.mezwalah.name)}
-                  className="py-3 bg-[#25D366] text-white rounded-xl font-medium hover:bg-[#1fa855] transition-all active:scale-95 flex items-center justify-center gap-2 touch-manipulation"
+                  className="py-3 bg-[#1a8a5c] text-white rounded-xl font-medium hover:bg-[#1fa855] transition-all active:scale-95 flex items-center justify-center gap-2 touch-manipulation"
                   style={{ WebkitTapHighlightColor: 'transparent' }}
                 >
                   <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
@@ -159,9 +150,6 @@ export default function PartnersPage({ params }: { params: Promise<{ locale: str
               <div className="flex-1">
                 <h2 className="text-lg font-bold text-[#274754]">{t.partners.noonMinutes.name}</h2>
                 <p className="text-xs text-[#94782C]">{t.partners.coupons}</p>
-              </div>
-              <div className="bg-[#CDB990] text-white text-xs font-bold px-3 py-1 rounded-full">
-                {t.partners.noonMinutes.couponsAvailable}
               </div>
             </div>
 
